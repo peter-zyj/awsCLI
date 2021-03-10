@@ -1,5 +1,5 @@
 import os, sys
-import re, time
+import re, time, datetime
 import shutil, atexit
 import subprocess
 import yaml
@@ -34,14 +34,15 @@ def print_color(message, color="black", style="{}", newLine=True):
 
 
 class aws(object):
-    def __init__(self, configuration=None):
+    def __init__(self, configuration=None,debug=False):
         self.config = False
         self.credentials = False
         self.home = os.getenv("HOME")
         self.prompt = "AWS-Auto#"
         self.resource = {}
-        self.tobeCleanUP = {}
-        self.cleanUp = False
+        self.tobeCleanUp = {}
+        self.resCleanUp = debug
+        self.cfgCleanUp = False
 
         atexit.register(self.close)
 
@@ -61,8 +62,7 @@ class aws(object):
             self._config_set(configuration)
 
     def close(self):
-        if not self.cleanUp:
-            self._config_restore()
+        self._config_restore()
 
     def __exit__(self):
         self.close()
@@ -93,32 +93,35 @@ class aws(object):
         return None
 
     def _config_restore(self):
+        if not self.resCleanUp:
+            self._res_term()
+            self.resCleanUp = True
 
-        self._res_term()
-
-        if self.config:
-            path_config_bk = self.home + "/.aws/config" + "_auto_bk"
-            path_config_org = self.home + "/.aws/config"
-            if not os.path.exists(path_config_bk):
-                print("[ERROR]: No ~/.aws/config_auto_bk found!")
+        if not self.cfgCleanUp:
+            if self.config:
+                path_config_bk = self.home + "/.aws/config" + "_auto_bk"
+                path_config_org = self.home + "/.aws/config"
+                if not os.path.exists(path_config_bk):
+                    print("[ERROR]: No ~/.aws/config_auto_bk found!")
+                else:
+                    shutil.move(path_config_bk, path_config_org)
+                    # os.popen(f"mv {path_config_bk} {path_config_org}")  python exit-prog kill popen ahead
             else:
-                shutil.move(path_config_bk, path_config_org)
-                # os.popen(f"mv {path_config_bk} {path_config_org}")  python exit-prog kill popen ahead
-        else:
-            os.remove(self.home + "/.aws/config")
+                os.remove(self.home + "/.aws/config")
 
-        if self.credentials:
-            path_credentials_bk = self.home + "/.aws/credentials" + "_auto_bk"
-            path_credentials_org = self.home + "/.aws/credentials"
-            if not os.path.exists(path_credentials_bk):
-                print("[ERROR]: No ~/.aws/credentials_auto_bk found!")
+            if self.credentials:
+                path_credentials_bk = self.home + "/.aws/credentials" + "_auto_bk"
+                path_credentials_org = self.home + "/.aws/credentials"
+                if not os.path.exists(path_credentials_bk):
+                    print("[ERROR]: No ~/.aws/credentials_auto_bk found!")
+                else:
+                    shutil.move(path_credentials_bk, path_credentials_org)
+                    # os.popen(f"mv {path_credentials_bk} {path_credentials_org}")python exit-prog kill popen ahead
             else:
-                shutil.move(path_credentials_bk, path_credentials_org)
-                # os.popen(f"mv {path_credentials_bk} {path_credentials_org}")python exit-prog kill popen ahead
-        else:
-            os.remove(self.home + "/.aws/credentials")
+                os.remove(self.home + "/.aws/credentials")
 
-        self.cleanUp = True
+            self.cfgCleanUp = True
+
         return
 
     def _config_interactive_setup(self):
@@ -223,7 +226,7 @@ class aws(object):
             sub_class = "INSTANCES"
             if "EC2" not in self.resource:
                 self.resource[category] = {}
-                self.tobeCleanUP[category] = []
+                self.tobeCleanUp[category] = []
                 self.resource[category][sub_class] = []
             elif "INSTANCES" not in self.resource["EC2"]:
                 self.resource[category][sub_class] = []
@@ -240,27 +243,42 @@ class aws(object):
                 temp = {}
                 temp["InstanceId"] = ins["InstanceId"]
                 temp["LaunchTime"] = ins["LaunchTime"]
-                self.tobeCleanUP[category].append(temp)
+                self.tobeCleanUp[category].append(temp)
 
             return yml["Instances"]
 
     def _res_term(self):
-        print_color("Resource Clean Up", style="{0:#^50}")
+        if self.tobeCleanUp != {}:
+            print_color("Resource Clean Up", style="{0:#^50}")
 
-        if "EC2" in self.tobeCleanUP:
-            print_color(".....[CleanUP][EC2].......")
-            for ins in self.tobeCleanUP["EC2"]:
-                id = ins["InstanceId"]
-                cmd = f"aws ec2 terminate-instances --instance-ids {id}"
-                self.raw_cli(cmd)
+            if "EC2" in self.tobeCleanUp:
+                print_color(".....[CleanUP][EC2].......")
+                for ins in self.tobeCleanUp["EC2"]:
+                    id = ins["InstanceId"]
+                    cmd = f"aws ec2 terminate-instances --instance-ids {id}"
+                    self.raw_cli(cmd)
 
-        print_color("END", style="{0:#^50}")
+            print_color("END", style="{0:#^50}")
 
     def list_resource(self, verbose=False):
         if verbose:
             print_color(yaml.dump(self.resource), "cyan")
         else:
-            print_color(yaml.dump(self.tobeCleanUP), "magenta")
+            print_color(yaml.dump(self.tobeCleanUp), "magenta")
+
+    def res_record(self, fileName=None):
+        if not fileName:
+            t_time = datetime.datetime.now()
+            fileName = "aws_res_" + t_time.strftime("%H-%M-%S_%d-%m-%Y ")
+        try:
+            with open(fileName, "w+") as file:
+                yaml.dump(self.resource, file)
+        except Exception as e:
+            print(e)
+
+    def key_generation(self):
+        "TBD"
+        pass
 
 
 if __name__ == "__main__":
@@ -284,7 +302,7 @@ if __name__ == "__main__":
           "--key-name testMonkey --security-group-ids sg-7e070b0f"
     res = obj.raw_cli(cmd)
 
-    res = obj.raw_cli(cmd)
+    # res = obj.raw_cli(cmd)
     obj.list_resource()
-    obj.close()
-    # print(res)
+    # obj.close()
+
