@@ -22,9 +22,14 @@ def print_color(message, color="black", style="{}", newLine=True):
         color = "black"
     color = COLORS[color]
     args = list(message)
-    args[0] = '{0}{1}'.format(color, str(args[0]))
-    args[-1] = '{1}{0}'.format(ENDCOLOR, str(args[-1]))
-    message = "".join(args)
+
+    if len(args) == 0:
+        # print('{0}{1}{2}'.format(COLORS['red'],"[ERROR]:[print_color]:Empty Message!!!",ENDCOLOR))
+        message = ""
+    else:
+        args[0] = '{0}{1}'.format(color, str(args[0]))
+        args[-1] = '{1}{0}'.format(ENDCOLOR, str(args[-1]))
+        message = "".join(args)
 
     format_str = style.format(message)
     if newLine:
@@ -249,7 +254,7 @@ class aws(object):
 
     def _res_term(self):
         if self.tobeCleanUp != {}:
-            print_color("Resource Clean Up", style="{0:#^50}")
+            print_color("Resource Clean Up", style="\n{0:#^50}")
 
             if "EC2" in self.tobeCleanUp:
                 print_color(".....[CleanUP][EC2].......")
@@ -257,6 +262,13 @@ class aws(object):
                     id = ins["InstanceId"]
                     cmd = f"aws ec2 terminate-instances --instance-ids {id}"
                     self.raw_cli(cmd)
+
+            if "KeyPair" in self.tobeCleanUp:
+                print_color(".....[CleanUP][KeyPair].......")
+                for key in self.tobeCleanUp["KeyPair"]:
+                    cmd = f"aws ec2 delete-key-pair --key-name {key}"
+                    self.raw_cli(cmd)
+                    os.remove(key+".pem")
 
             print_color("END", style="{0:#^50}")
 
@@ -276,9 +288,26 @@ class aws(object):
         except Exception as e:
             print(e)
 
-    def key_generation(self):
-        "TBD"
-        pass
+    def key_generation(self, keyName=None):
+        if not keyName:
+            keyName = "key_auto"
+
+        cmd = "aws ec2 create-key-pair --key-name " + keyName
+        res = self.raw_cli(cmd, False)
+        pattern = r"(?s)KeyMaterial: '(.*?)'"
+        key_private = re.compile(pattern).findall(res)
+        if key_private != []:
+            with open(keyName+".pem", "w+") as f:
+                f.write(key_private[0])
+
+            if "KeyPair" not in self.tobeCleanUp:
+                self.tobeCleanUp["KeyPair"] = [keyName]
+            else:
+                self.tobeCleanUp["KeyPair"].append(keyName)
+        else:
+            print_color("[Error]:[key_generation]","red")
+            print(res)
+
 
 
 if __name__ == "__main__":
