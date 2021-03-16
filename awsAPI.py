@@ -44,6 +44,8 @@ class aws(object):
         self.credentials = False
         self.home = os.getenv("HOME")
         self.prompt = "AWS-Auto#"
+        self.res_deployment = None
+        self.res_mapping = {}
         self.resource = {}
         self.tobeCleanUp = {}
         self.resCleanUp = debug
@@ -206,7 +208,7 @@ class aws(object):
 
         res1 = "AWS-Auto#" + commandline + "\n"
         # res2 = os.popen(commandline).read()  not working in class destructor
-        p = subprocess.Popen(commandline, shell=True, stdout=subprocess.PIPE)
+        p = subprocess.Popen(commandline, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p.communicate()
         res2 = out.decode()
 
@@ -221,7 +223,7 @@ class aws(object):
                 print_color(err, "red")
                 print_color(res2, "red")
 
-        return res1 + res2
+        return res1 + res2 + err.decode()
 
     def _res_filter(self, commandline):
         category = None
@@ -285,6 +287,9 @@ class aws(object):
         try:
             with open(fileName, "w+") as file:
                 yaml.dump(self.resource, file)
+                # yaml.dump("{0:#^50}".format("name-instance"), file)
+                file.write("\n{0:#^50}\n".format("name-instance"))
+                yaml.dump(self.res_mapping, file)
         except Exception as e:
             print(e)
 
@@ -307,6 +312,52 @@ class aws(object):
         else:
             print_color("[Error]:[key_generation]","red")
             print(res)
+
+    def load_deployment(self, fileName):
+        try:
+            with open(fileName, "r") as f:
+                cont =f.read()
+        except FileNotFoundError as e:
+            print(f"[ERROR][load_deplyment]:{e}")
+            return
+        self.res_deployment = yaml.load(cont,Loader=yaml.FullLoader)
+
+
+
+    def start_deployment(self):
+
+        for instance in self.res_deployment:
+            num = self.res_deployment[instance]["count"]
+
+            if not num:
+                continue
+
+            istName, type = re.compile(r'(.*?)\((.*?)\)').findall(instance)[0]
+
+            if type.lower() == "ec2":
+
+                cmd1 = "aws ec2 run-instances "
+                for key,value in self.res_deployment[instance].items():
+                    if key == "action":
+                        continue
+                    cmd1 += "--" + key + " " + str(value) + " "
+
+                res1 = self.raw_cli(cmd1)
+                pattern = r'InstanceId:(.*)'
+                result = re.compile(pattern).findall(res1)
+                if len(result) != num:
+                    print_color("[ERROR][start_deployment]: Unmatched instances number between expected and real world", "red")
+                    return
+
+                for idx in range(num):
+                    if num > 1:
+                        name = f"{istName}_{idx}"
+                    else:
+                        name = istName
+                    cmd2 = f"aws ec2 create-tags --tag 'Key=Name,Value={name}' --resources {result[idx].strip()}"
+                    res2 = self.raw_cli(cmd2)
+                    self.res_mapping[name] = result[idx].strip()
+
 
 
 
