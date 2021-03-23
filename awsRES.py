@@ -68,9 +68,9 @@ class INTERNET_GATEWAY(resource):
             else:
                 self._action_handler(value)
 
-        self.termination += "--internet-gateway-id" + " " + "self.ID"
+        self.termination += " --internet-gateway-id" + " " + "self.ID"
         if self.name:
-            self.reName += "--tag" + " " + f"Key=Name,Value={self.name}" + " " + "--resources" + " " + "self.ID"
+            self.reName += " --tag" + " " + f"Key=Name,Value={self.name}" + " " + "--resources" + " " + "self.ID"
 
 
     def _action_handler(self, action_yaml):
@@ -80,10 +80,16 @@ class INTERNET_GATEWAY(resource):
 
 
     def exec_creation(self, cli_handler):
-        pass
+        res = cli_handler.raw_cli_res(self.creation)
+        self.ID = re.compile(r'InternetGatewayId: (.*)').findall(res)[0].strip()
+        if self.name:
+            self.reName = self.reName.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.reName)
 
     def exec_termination(self, cli_handler):
-        pass
+        if not self.keepAlive:
+            self.termination = self.termination.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.termination)
 
 
 class VPC(resource):
@@ -468,14 +474,14 @@ class ROUTE(resource):
                 return
             self.creation = re.sub(r"\{.*?\}", rtb_id, self.creation)
 
-        res = cli_handler.raw_cli(self.creation)
+        res = cli_handler.raw_cli_res(self.creation)
         pass
 
     def exec_termination(self, cli_handler):
         pass
 
     def _map_vps_route_id(self,cli_handler, vpc_id):
-        res = cli_handler.raw_cli("aws ec2 describe-route-tables")
+        res = cli_handler.raw_cli_res("aws ec2 describe-route-tables")
         pattern = f'(?s)RouteTableId(?:[^R]|R(?!outeTableId))*?VpcId: {vpc_id})'
         filter = re.compile(pattern).findall(res)[0]
         return re.compile(r"RouteTableId: (.*)").findall(filter)[0]

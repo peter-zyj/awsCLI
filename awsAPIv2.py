@@ -52,6 +52,7 @@ class aws(object):
         self.tobeCleanUp = {}
         self.resCleanUp = debug
         self.cfgCleanUp = False
+        self.term_seq = []
 
         atexit.register(self.close)
 
@@ -71,6 +72,7 @@ class aws(object):
             self._config_set(configuration)
 
     def close(self):
+        self._res_clean()
         self._config_restore()
 
     def __exit__(self):
@@ -200,6 +202,29 @@ class aws(object):
             res = os.popen(f"cat {self.home}/.aws/credentials").read()
             print(res)
 
+    def raw_cli_res(self, commandline, show=True):
+
+        if show:
+            print_color(self.prompt, "black", newLine=False)
+            print_color(commandline, "blue")
+
+        res1 = "AWS-Auto#" + commandline + "\n"
+        # res2 = os.popen(commandline).read()  not working in class destructor
+        p = subprocess.Popen(commandline, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = p.communicate()
+        res2 = out.decode()
+        if type(err).__name__ == "bytes":
+            err = err.decode()
+
+        if show:
+            if not err:
+                print_color(res2, "green")
+            else:
+                print_color(err, "red")
+                print_color(res2, "red")
+
+        return res1 + res2 + err
+
     def raw_cli(self, commandline, show=True):
 
         category, sub_class = self._res_filter(commandline)
@@ -213,6 +238,8 @@ class aws(object):
         p = subprocess.Popen(commandline, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p.communicate()
         res2 = out.decode()
+        if type(err).__name__ == "bytes":
+            err = err.decode()
 
         if not err and category:
             res_suite = self._res_deepHandle(category, res2)
@@ -225,7 +252,7 @@ class aws(object):
                 print_color(err, "red")
                 print_color(res2, "red")
 
-        return res1 + res2 + err.decode()
+        return res1 + res2 + err
 
     def _res_filter(self, commandline):
         category = None
@@ -315,13 +342,16 @@ class aws(object):
             print_color("[Error]:[key_generation]","red")
             print(res)
 
-    def load_deployment(self, fileName):
-        try:
-            with open(fileName, "r") as f:
-                cont =f.read()
-        except FileNotFoundError as e:
-            print_color(f"[ERROR][awsAPI.load_deplyment]:{e}", "red")
-            return
+    def load_deployment(self, fileName=None, content=None):
+        if fileName:
+            try:
+                with open(fileName, "r") as f:
+                    cont =f.read()
+            except FileNotFoundError as e:
+                print_color(f"[ERROR][awsAPI.load_deplyment]:{e}", "red")
+                return
+        else:
+            cont = content
         self.res_yaml = yaml.load(cont,Loader=yaml.FullLoader)
 
         if not self.res_yaml:
@@ -335,8 +365,9 @@ class aws(object):
 
     def start_deployment(self):
         for res in self._creation_sort(self.res_deployment):
-            # self.res_deployment[res].exec_creation()
-            print("Debug:", res)
+            self.term_seq.append(res)
+            self.res_deployment[res].exec_creation(self)
+            # print("Debug:", res)
 
     def find_id(self,name):
         if name not in self.res_deployment:
@@ -344,13 +375,24 @@ class aws(object):
         else:
             return self.res_deployment[name].get_id()
 
+    def _res_clean(self):
+        if any(self.res_deployment.values()):
+            for name in self._termination_sort():
+                res = self.res_deployment[name]
+                res.exec_termination(self)
+                self.res_deployment[name] = None
+
+    def _termination_sort(self):
+        while self.term_seq:
+            yield self.term_seq.pop()
+
     def _creation_sort(self, res_deployment):
         pop_list = set()
         leng = len(res_deployment)
         candi_res = {}
         for name, res_obj in res_deployment.items():
             candi_res[name] = res_obj.get_creation_dependency()
-        print("~~~~~~~~~~~~~~~~")
+        num = 0
         while len(pop_list) != leng:
             for name,s_value in candi_res.items():
                 if name in pop_list:
@@ -364,6 +406,13 @@ class aws(object):
                         if old & pop_list:
                             candi_res[name].difference_update(pop_list)
 
+        num += 1
+        if num % 100 == 0:
+            print_color("[Warning][awsAPI][_creation_sort]: the Loop reach {num} times", "yellow")
+            res = input("DO you really have so many objects to create? or software hit dead loop? Continue or Quit[C/Q]")
+            if res.lower() != 'c':
+                print_color("[Info][awsAPI][_creation_sort]: Quit the Application", "black")
+                sys.exit(1)
 
 
 
