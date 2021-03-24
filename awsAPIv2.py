@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, traceback
 import re, time, datetime
 import shutil, atexit
 import subprocess
@@ -114,6 +114,7 @@ class aws(object):
                 path_config_org = self.home + "/.aws/config"
                 if not os.path.exists(path_config_bk):
                     print("[ERROR]: No ~/.aws/config_auto_bk found!")
+                    traceback.print_stack()
                 else:
                     shutil.move(path_config_bk, path_config_org)
                     # os.popen(f"mv {path_config_bk} {path_config_org}")  python exit-prog kill popen ahead
@@ -125,6 +126,7 @@ class aws(object):
                 path_credentials_org = self.home + "/.aws/credentials"
                 if not os.path.exists(path_credentials_bk):
                     print("[ERROR]: No ~/.aws/credentials_auto_bk found!")
+                    traceback.print_stack()
                 else:
                     shutil.move(path_credentials_bk, path_credentials_org)
                     # os.popen(f"mv {path_credentials_bk} {path_credentials_org}")python exit-prog kill popen ahead
@@ -170,6 +172,7 @@ class aws(object):
                     f1.write(cont)
         except KeyError:
             print("[Info]: Use default config setting")
+            traceback.print_exc(file=sys.stdout)
 
         try:
             if isinstance(setting["credentials"], str):
@@ -186,6 +189,7 @@ class aws(object):
                     f2.write(cont)
         except KeyError:
             print("[Info]: Use default credentials setting")
+            traceback.print_exc(file=sys.stdout)
 
     def config_check(self):
         if not os.path.exists(self.home + "/.aws/config"):
@@ -321,6 +325,7 @@ class aws(object):
                 yaml.dump(self.res_mapping, file)
         except Exception as e:
             print(e)
+            traceback.print_exc(file=sys.stdout)
 
     def key_generation(self, keyName=None):
         if not keyName:
@@ -349,6 +354,7 @@ class aws(object):
                     cont =f.read()
             except FileNotFoundError as e:
                 print_color(f"[ERROR][awsAPI.load_deplyment]:{e}", "red")
+                traceback.print_exc(file=sys.stdout)
                 return
         else:
             cont = content

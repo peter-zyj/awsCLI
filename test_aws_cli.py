@@ -103,7 +103,7 @@ def test_key_generation():
     obj.close()
     assert not os.path.exists("key_auto.pem")
 
-@pytest.mark.deploy
+@pytest.mark.dp
 def test_deploy():
     obj = aws(setting)
     atexit.register(obj.close)
@@ -114,6 +114,7 @@ def test_deploy():
     obj.res_record()
     obj.close()
 
+@pytest.mark.deploy
 @pytest.mark.internetGW
 def test_IG():
     cont ='''
@@ -135,8 +136,9 @@ Auto_IG_App(INTERNET_GATEWAY):
     atexit.register(obj2.close)
     res2 = obj2.raw_cli("aws ec2 describe-internet-gateways")
     assert "Auto_IG_App" not in res2
+    obj2.close()
 
-
+@pytest.mark.deploy
 @pytest.mark.vpc
 def test_VPC():
     cont ='''
@@ -147,6 +149,83 @@ Auto_VPC_App(VPC):
   cidr-block: 10.0.0.0/16
   action:
     bind_to: Auto_IG_App
+    cleanUP: True
+'''
+    obj = aws(setting)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+    res = obj.raw_cli("aws ec2 describe-vpcs")
+    assert "Auto_VPC_App" in res
+    obj.close()
+
+    obj2 = aws(setting)
+    atexit.register(obj2.close)
+    res2 = obj2.raw_cli("aws ec2 describe-vpcs")
+    assert "Auto_VPC_App" not in res2
+
+    obj2.close()
+
+@pytest.mark.deploy
+@pytest.mark.sg
+def test_SG():
+    cont ='''
+Auto_IG_App(INTERNET_GATEWAY):
+  action:
+    cleanUP: True
+Auto_VPC_App(VPC):
+  cidr-block: 10.0.0.0/16
+  action:
+    bind_to: Auto_IG_App
+    cleanUP: True
+Auto_SG_App(SECURITY_GROUP):
+  vpc-id: Auto_VPC_App
+  description: My security group
+  action:
+    authorize-security-group-ingress:
+      - protocol: tcp
+        port: 22
+        cidr: 0.0.0.0/0
+      - protocol: tcp
+        port: 80
+        cidr: 0.0.0.0/0
+      - protocol: icmp
+        port: all
+        cidr: 0.0.0.0/0
+      - protocol: udp
+        port: 6081
+        cidr: 0.0.0.0/0
+    bind_to: Auto_VPC_App
+    cleanUP: True
+'''
+    obj = aws(setting)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+    res = obj.raw_cli("aws ec2 describe-security-groups")
+    assert "Auto_SG_App" in res
+    time.sleep(20)
+    obj.close()
+
+    obj2 = aws(setting)
+    atexit.register(obj2.close)
+    res2 = obj2.raw_cli("aws ec2 describe-security-groups")
+    assert "Auto_SG_App" not in res2
+
+@pytest.mark.disorder
+def test_disorder():
+    cont ='''
+Auto_VPC_App(VPC):
+  cidr-block: 10.0.0.0/16
+  action:
+    bind_to: Auto_IG_App
+    cleanUP: True
+Auto_IG_App(INTERNET_GATEWAY):
+  action:
     cleanUP: True
 '''
     obj = aws(setting)
