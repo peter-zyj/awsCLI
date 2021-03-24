@@ -419,6 +419,10 @@ aws ec2 authorize-security-group-ingress --group-id sg-044bb3e58ed8d8c87 --proto
 aws ec2 authorize-security-group-ingress --group-id sg-044bb3e58ed8d8c87 --protocol udp --port 6081 --cidr 0.0.0.0/0
 aws ec2 delete-security-group --group-id sg-044bb3e58ed8d8c87
 
+zones: TBD
+aws ec2 describe-availability-zones
+aws ec2 create-subnet --vpc-id vpc-04d55cd47598533ce --cidr-block 10.0.1.0/24 --availability-zone-id use2-az1
+
 subnet:
 aws ec2 describe-subnets
 aws ec2 create-subnet --vpc-id vpc-04d55cd47598533ce --cidr-block 10.0.1.0/24
@@ -482,6 +486,15 @@ aws ec2 create-vpc-endpoint --vpc-endpoint-type GatewayLoadBalancer
 --vpc-id vpc-09518b536ccd73a17 --subnet-ids subnet-0ca4dea497eab3968
 
 aws ec2 delete-vpc-endpoints --vpc-endpoint-ids vpce-09fcb69ef29c01e5b
+
+
+route tables:
+aws ec2 create-route-table --vpc-id vpc-a01106c2
+aws ec2 delete-route-table --route-table-id rtb-22574640
+aws ec2 associate-route-table --route-table-id rtb-22574640 --subnet-id subnet-9d4a7b6c
+
+aws ec2 disassociate-route-table --association-id rtbassoc-781d0d1a
+aws ec2 create-route --route-table-id rtb-22574640 --destination-cidr-block 0.0.0.0/0 --gateway-id igw-c0a643a9
 
 routes:
 aws ec2 create-route --route-table-id rtb-0d0cd971e645a6c53 --destination-cidr-block 0.0.0.0/0 --gateway-id igw-0c4bc11847f55f073

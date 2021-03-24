@@ -136,6 +136,34 @@ Auto_IG_App(INTERNET_GATEWAY):
     res2 = obj2.raw_cli("aws ec2 describe-internet-gateways")
     assert "Auto_IG_App" not in res2
 
+
+@pytest.mark.vpc
+def test_VPC():
+    cont ='''
+Auto_IG_App(INTERNET_GATEWAY):
+  action:
+    cleanUP: True
+Auto_VPC_App(VPC):
+  cidr-block: 10.0.0.0/16
+  action:
+    bind_to: Auto_IG_App
+    cleanUP: True
+'''
+    obj = aws(setting)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+    res = obj.raw_cli("aws ec2 describe-vpcs")
+    assert "Auto_VPC_App" in res
+    obj.close()
+
+    obj2 = aws(setting)
+    atexit.register(obj2.close)
+    res2 = obj2.raw_cli("aws ec2 describe-vpcs")
+    assert "Auto_VPC_App" not in res2
+
 #....
 def test_auto_config_CleanUp():
     obj = aws()
