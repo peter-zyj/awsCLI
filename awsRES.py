@@ -144,7 +144,7 @@ class VPC(resource):
                     self.attach = re.sub(r"self.ID", self.ID, self.attach)
                     igw_id = cli_handler.find_id(igw)
                     self.attach = re.sub(r"\{.*?\}", igw_id, self.attach)
-                    cli_handler.raw_cli_res(self.attach)
+        cli_handler.raw_cli_res(self.attach)
 
     def exec_termination(self, cli_handler):
         if not self.keepAlive:
@@ -156,7 +156,7 @@ class VPC(resource):
                         self.detach = re.sub(r"self.ID", self.ID, self.detach)
                         igw_id = cli_handler.find_id(igw)
                         self.detach = re.sub(r"\{.*?\}", igw_id, self.detach)
-                        cli_handler.raw_cli_res(self.detach)
+            cli_handler.raw_cli_res(self.detach)
 
             self.termination = self.termination.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.termination)
@@ -213,16 +213,16 @@ class SECURITY_GROUP(resource):
                     igw_id = cli_handler.find_id(vpc)
                     str_vpcID = f"--vpc-id {igw_id} "
                     self.creation = re.sub(r"--vpc-id .*? ", str_vpcID, self.creation)
-                    res = cli_handler.raw_cli_res(self.creation)
 
-                    self.ID = re.compile(r'GroupId: (.*)').findall(res)[0].strip()
-                    if self.name:
-                        self.reName = self.reName.replace("self.ID", str(self.ID))
-                        cli_handler.raw_cli_res(self.reName)
+        res = cli_handler.raw_cli_res(self.creation)
+        self.ID = re.compile(r'GroupId: (.*)').findall(res)[0].strip()
+        if self.name:
+            self.reName = self.reName.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.reName)
 
-                    for rule in self.rules:
-                        rule = rule.replace("self.ID", str(self.ID))
-                        cli_handler.raw_cli_res(rule)
+        for rule in self.rules:
+            rule = rule.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(rule)
 
     def exec_termination(self, cli_handler):
         if not self.keepAlive:
@@ -245,15 +245,15 @@ class SUBNET(resource):
         for key, value in self.raw_yaml.items():
             if key != "action":
                 if value:
-                    self.creation += " --" + key + str(value)
+                    self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
             else:
                 self._action_handler(value)
 
-        self.termination += "--subnet-id" + " " + "self.ID"
+        self.termination += " --subnet-id" + " " + "self.ID"
         if self.name:
-            self.reName += "--tag" + " " + f"Key=Name,Value={self.name}" + " " + "--resources" + " " + "self.ID"
+            self.reName += " --tag" + " " + f"Key=Name,Value={self.name}" + " " + "--resources" + " " + "self.ID"
 
     def _action_handler(self, action_yaml):
         for key, value in action_yaml.items():
@@ -266,10 +266,25 @@ class SUBNET(resource):
                 self.keepAlive = False if str(value).lower() == "true" else True
 
     def exec_creation(self, cli_handler):
-        pass
+        if self.creation_dependency:
+            for vpc in self.creation_dependency:
+                res_obj = cli_handler.res_deployment[vpc]
+                if type(res_obj).__name__ == "VPC":
+                    igw_id = cli_handler.find_id(vpc)
+                    str_vpcID = f"--vpc-id {igw_id} "
+                    self.creation = re.sub(r"--vpc-id .*? ", str_vpcID, self.creation)
+
+        res = cli_handler.raw_cli_res(self.creation)
+        self.ID = re.compile(r'SubnetId: (.*)').findall(res)[0].strip()
+        if self.name:
+            self.reName = self.reName.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.reName)
+
 
     def exec_termination(self, cli_handler):
-        pass
+        if not self.keepAlive:
+            self.termination = self.termination.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.termination)
 
 
 class GATEWAY_LOAD_BALANCE(resource):
@@ -277,7 +292,7 @@ class GATEWAY_LOAD_BALANCE(resource):
         super().__init__()
         self.name = tagName
         self.raw_yaml = content
-        self.creation = "aws elbv2 create-load-balancer"
+        self.creation = f"aws elbv2 create-load-balancer --name {self.name}"
         self.termination = "aws elbv2 delete-load-balancer"
         self.ID = None
         self._cmd_composition()
@@ -286,13 +301,13 @@ class GATEWAY_LOAD_BALANCE(resource):
         for key, value in self.raw_yaml.items():
             if key != "action":
                 if value:
-                    self.creation += " --" + key + str(value)
+                    self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
             else:
                 self._action_handler(value)
 
-        self.termination += "--load-balancer-arn" + " " + "self.ID"
+        self.termination += " --load-balancer-arn" + " " + "self.ID"
 
     def _action_handler(self, action_yaml):
         for key, value in action_yaml.items():
@@ -305,10 +320,22 @@ class GATEWAY_LOAD_BALANCE(resource):
                 self.keepAlive = False if str(value).lower() == "true" else True
 
     def exec_creation(self, cli_handler):
-        pass
+        if self.creation_dependency:
+            str_subID = "--subnets"
+            for sub in self.creation_dependency:
+                res_obj = cli_handler.res_deployment[sub]
+                if type(res_obj).__name__ == "SUBNET":
+                    sub_id = cli_handler.find_id(sub)
+                    str_subID += " " + sub_id
+            self.creation = re.sub(r"--subnets .*? ", str_subID, self.creation)
+
+        res = cli_handler.raw_cli_res(self.creation)
+        self.ID = re.compile(r'LoadBalancerArn: (.*)').findall(res)[0].strip()
 
     def exec_termination(self, cli_handler):
-        pass
+        if not self.keepAlive:
+            self.termination = self.termination.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.termination)
 
 
 class TARGET_GROUP(resource):
