@@ -211,8 +211,8 @@ class SECURITY_GROUP(resource):
                 res_obj = cli_handler.res_deployment[vpc]
                 if type(res_obj).__name__ == "VPC":
                     vpc_id = cli_handler.find_id(vpc)
-                    str_vpcID = f"--vpc-id {vpc_id} "
-                    self.creation = re.sub(r"--vpc-id .*? ", str_vpcID, self.creation)
+                    str_vpcID = f"--vpc-id {vpc_id}"
+                    self.creation = re.sub(r"--vpc-id .*?(?=( |$))", str_vpcID, self.creation)
 
         res = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'GroupId: (.*)').findall(res)[0].strip()
@@ -271,9 +271,8 @@ class SUBNET(resource):
                 res_obj = cli_handler.res_deployment[vpc]
                 if type(res_obj).__name__ == "VPC":
                     vpc_id = cli_handler.find_id(vpc)
-                    str_vpcID = f"--vpc-id {vpc_id} "
-                    self.creation = re.sub(r"--vpc-id .*? ", str_vpcID, self.creation)
-
+                    str_vpcID = f"--vpc-id {vpc_id}"
+                    self.creation = re.sub(r"--vpc-id .*?(?=( |$))", str_vpcID, self.creation)
         res = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'SubnetId: (.*)').findall(res)[0].strip()
         if self.name:
@@ -327,7 +326,7 @@ class GATEWAY_LOAD_BALANCE(resource):
                 if type(res_obj).__name__ == "SUBNET":
                     sub_id = cli_handler.find_id(sub)
                     str_subID += " " + sub_id
-            self.creation = re.sub(r"--subnets .*? ", str_subID, self.creation)
+            self.creation = re.sub(r"--subnets .*?(?=( --|$))", str_subID, self.creation)
 
         res = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'LoadBalancerArn: (.*)').findall(res)[0].strip()
@@ -343,7 +342,7 @@ class TARGET_GROUP(resource):
         super().__init__()
         self.name = tagName
         self.raw_yaml = content
-        self.creation = "aws elbv2 create-target-group --name {self.name}"
+        self.creation = f"aws elbv2 create-target-group --name {self.name}"
         self.termination = "aws elbv2 delete-target-group"
         self.ID = None
         self._cmd_composition()
@@ -376,14 +375,11 @@ class TARGET_GROUP(resource):
                 res_obj = cli_handler.res_deployment[vpc]
                 if type(res_obj).__name__ == "VPC":
                     vpc_id = cli_handler.find_id(vpc)
-                    str_vpcID = f"--vpc-id {vpc_id} "
-                    self.creation = re.sub(r"--vpc-id .*? ", str_vpcID, self.creation)
+                    str_vpcID = f"--vpc-id {vpc_id}"
+                    self.creation = re.sub(r"--vpc-id .*?(?=( |$))", str_vpcID, self.creation)
 
         res = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'TargetGroupArn: (.*)').findall(res)[0].strip()
-        if self.name:
-            self.reName = self.reName.replace("self.ID", str(self.ID))
-            cli_handler.raw_cli_res(self.reName)
 
     def exec_termination(self, cli_handler):
         if not self.keepAlive:

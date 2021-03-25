@@ -219,14 +219,12 @@ class aws(object):
         res2 = out.decode()
         if type(err).__name__ == "bytes":
             err = err.decode()
-
         if show:
             if not err:
                 print_color(res2, "green")
             else:
                 print_color(err, "red")
                 print_color(res2, "red")
-
         return res1 + res2 + err
 
     def raw_cli(self, commandline, show=True):
@@ -373,7 +371,6 @@ class aws(object):
         for res in self._creation_sort(self.res_deployment):
             self.term_seq.append(res)
             self.res_deployment[res].exec_creation(self)
-            # print("Debug:", res)
 
     def find_id(self,name):
         if name not in self.res_deployment:
@@ -412,13 +409,15 @@ class aws(object):
                         if old & pop_list:
                             candi_res[name].difference_update(pop_list)
 
-        num += 1
-        if num % 100 == 0:
-            print_color("[Warning][awsAPI][_creation_sort]: the Loop reach {num} times", "yellow")
-            res = input("DO you really have so many objects to create? or software hit dead loop? Continue or Quit[C/Q]")
-            if res.lower() != 'c':
-                print_color("[Info][awsAPI][_creation_sort]: Quit the Application", "black")
-                sys.exit(1)
+            num += 1
+            if num % 100 == 0:
+                print("[Info]::Created List:", pop_list)
+                print("[Info]::Waiting List:", candi_res)
+                print_color("[Warning][awsAPI][_creation_sort]: the Loop reach {num} times", "yellow")
+                res = input("Do you really have so many objects to create? or software hit dead loop? Continue or Quit[C/Q]")
+                if res.lower() != 'c':
+                    print_color("[Info][awsAPI][_creation_sort]: Quit the Application", "black")
+                    sys.exit(1)
 
 
 
