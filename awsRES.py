@@ -35,7 +35,10 @@ class resource(object):
         return self.termination
 
     def get_id(self):
-        return self.ID
+        if self.__class__.__name__ == "VPCE_SERVICE":
+            return self.svcName
+        else:
+            return self.ID
 
     def load_deployment(self, fileName):
         print("No definition of load_deployment in object: ", self.__class__.__name__)
@@ -113,7 +116,7 @@ class VPC(resource):
             else:
                 self._action_handler(value)
 
-        self.attach += " --vpc-id" + " " + "self.ID" + " " + "--internet-gateway-id" + " " +"{IGW_ID}"
+        self.attach += " --vpc-id" + " " + "self.ID" + " " + "--internet-gateway-id" + " " + "{IGW_ID}"
         self.detach += " --vpc-id" + " " + "self.ID" + " " + "--internet-gateway-id" + " " + "{IGW_ID}"
 
         self.termination += " --vpc-id" + " " + "self.ID"
@@ -279,7 +282,6 @@ class SUBNET(resource):
             self.reName = self.reName.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.reName)
 
-
     def exec_termination(self, cli_handler):
         if not self.keepAlive:
             self.termination = self.termination.replace("self.ID", str(self.ID))
@@ -290,7 +292,6 @@ class SUBNET(resource):
                     time.sleep(5)
                 else:
                     break
-
 
 
 class GATEWAY_LOAD_BALANCE(resource):
@@ -333,7 +334,8 @@ class GATEWAY_LOAD_BALANCE(resource):
                 if type(res_obj).__name__ == "SUBNET":
                     sub_id = cli_handler.find_id(sub)
                     str_subID += " " + sub_id
-            self.creation = re.sub(r"--subnets .*?(?=( --|$))", str_subID, self.creation)
+            if str_subID != "--subnets":
+                self.creation = re.sub(r"--subnets .*?(?=( --|$))", str_subID, self.creation)
 
         res = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'LoadBalancerArn: (.*)').findall(res)[0].strip()
@@ -456,6 +458,7 @@ class VPCE_SERVICE(resource):
         self.termination = "aws ec2 delete-vpc-endpoint-service-configurations"
         self.reName = "aws ec2 create-tags"
         self.ID = None
+        self.svcName = None
         self._cmd_composition()
 
     def _cmd_composition(self):
@@ -499,6 +502,7 @@ class VPCE_SERVICE(resource):
                 break
 
         self.ID = re.compile(r'ServiceId: (.*)').findall(res)[0].strip()
+        self.svcName = re.compile(r'ServiceName: (.*)').findall(res)[0].strip()
 
         if self.name:
             self.reName = self.reName.replace("self.ID", str(self.ID))
@@ -517,20 +521,24 @@ class GATEWAY_LOAD_BALANCE_ENDPOINT(resource):
         self.raw_yaml = content
         self.creation = "aws ec2 create-vpc-endpoint"
         self.termination = "aws ec2 delete-vpc-endpoints"
+        self.reName = "aws ec2 create-tags"
         self.ID = None
         self._cmd_composition()
 
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
-                    self.creation += " --" + key + str(value)
+                if value and value != "None":
+                    self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
             else:
                 self._action_handler(value)
 
-        self.termination += "--vpc-endpoint-ids" + " " + "self.ID"
+        self.termination += " --vpc-endpoint-ids" + " " + "self.ID"
+
+        if self.name:
+            self.reName += " --tag" + " " + f"Key=Name,Value={self.name}" + " " + "--resources" + " " + "self.ID"
 
     def _action_handler(self, action_yaml):
         for key, value in action_yaml.items():
@@ -543,10 +551,36 @@ class GATEWAY_LOAD_BALANCE_ENDPOINT(resource):
                 self.keepAlive = False if str(value).lower() == "true" else True
 
     def exec_creation(self, cli_handler):
-        pass
+        if self.creation_dependency:
+            for res in self.creation_dependency:
+                str_subID = "--subnet-ids"
+                res_obj = cli_handler.res_deployment[res]
+                if type(res_obj).__name__ == "VPC":
+                    vpc_id = cli_handler.find_id(res)
+                    str_vpcID = f"--vpc-id {vpc_id}"
+                    self.creation = re.sub(r"--vpc-id .*?(?=( --|$))", str_vpcID, self.creation)
+                elif type(res_obj).__name__ == "VPCE_SERVICE":
+                    vpce_id = cli_handler.find_id(res)
+                    str_vpceID = f"--service-name {vpce_id}"
+                    self.creation = re.sub(r"--service-name .*?(?=( --|$))", str_vpceID, self.creation)
+                elif type(res_obj).__name__ == "SUBNET":
+                    sub_id = cli_handler.find_id(res)
+                    str_subID += f" {sub_id}"
+
+            if str_subID != "--subnet-ids":
+                self.creation = re.sub(r"--subnet-ids .*?(?=( --|$))", str_subID, self.creation)
+
+        res = cli_handler.raw_cli_res(self.creation)
+        self.ID = re.compile(r'VpcEndpointId: (.*)').findall(res)[0].strip()
+
+        if self.name:
+            self.reName = self.reName.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.reName)
 
     def exec_termination(self, cli_handler):
-        pass
+        if not self.keepAlive:
+            self.termination = self.termination.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.termination)
 
 
 class ROUTE(resource):

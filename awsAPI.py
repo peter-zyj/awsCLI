@@ -485,6 +485,24 @@ aws ec2 create-vpc-endpoint --vpc-endpoint-type GatewayLoadBalancer
 --service-name com.amazonaws.vpce.us-east-2.vpce-svc-0840335b70927cf16 
 --vpc-id vpc-09518b536ccd73a17 --subnet-ids subnet-0ca4dea497eab3968
 
+
+| => aws ec2 create-vpc-endpoint --vpc-endpoint-type GatewayLoadBalancer --service-name com.amazonaws.vpce.us-east-2.vpce-svc-0840335b70927cf16 --vpc-id vpc-09518b536ccd73a17 --subnet-ids subnet-0ca4dea497eab3968
+VpcEndpoint:
+  CreationTimestamp: '2021-03-26T19:08:25.946000+00:00'
+  NetworkInterfaceIds:
+  - eni-021bbe0cb2d90621d
+  OwnerId: '439462095416'
+  RequesterManaged: false
+  ServiceName: com.amazonaws.vpce.us-east-2.vpce-svc-0840335b70927cf16
+  State: pending
+  SubnetIds:
+  - subnet-0ca4dea497eab3968
+  VpcEndpointId: vpce-00021cca5da094b47
+  VpcEndpointType: GatewayLoadBalancer
+  VpcId: vpc-09518b536ccd73a17
+
+
+
 aws ec2 delete-vpc-endpoints --vpc-endpoint-ids vpce-09fcb69ef29c01e5b
 
 
