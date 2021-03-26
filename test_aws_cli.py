@@ -476,6 +476,87 @@ Auto-LIST(LISTENER):
     res2 = obj2.raw_cli("aws elbv2 describe-load-balancers")
     assert "Auto-GWLB" not in res2
 
+@pytest.mark.deploy
+@pytest.mark.gwlbs
+def test_GWLBS():
+    cont ='''
+Auto_IG_App(INTERNET_GATEWAY):
+  action:
+    cleanUP: True
+Auto_VPC_App(VPC):
+  cidr-block: 10.0.0.0/16
+  action:
+    bind_to: Auto_IG_App
+    cleanUP: True
+Auto_SG_App(SECURITY_GROUP):
+  vpc-id: Auto_VPC_App
+  description: My security group
+  action:
+    authorize-security-group-ingress:
+      - protocol: tcp
+        port: 22
+        cidr: 0.0.0.0/0
+      - protocol: tcp
+        port: 80
+        cidr: 0.0.0.0/0
+      - protocol: icmp
+        port: all
+        cidr: 0.0.0.0/0
+      - protocol: udp
+        port: 6081
+        cidr: 0.0.0.0/0
+    bind_to: Auto_VPC_App
+    cleanUP: True
+Auto_SUB_Sec(SUBNET):
+  vpc-id: Auto_VPC_App
+  cidr-block: 10.0.1.0/24
+  action:
+    bind_to: Auto_VPC_App
+    cleanUP: True
+Auto-GWLB(GATEWAY_LOAD_BALANCE):
+  type: gateway
+  subnets: Auto_SUB_Sec
+  action:
+    bind_to: Auto_SUB_Sec
+    cleanUP: True
+Auto-TG(TARGET_GROUP):
+  protocol: GENEVE
+  port: 6081
+  vpc-id: Auto_VPC_App
+  action:
+    bind_to: Auto_VPC_App
+    cleanUP: True
+Auto-LIST(LISTENER):
+  load-balancer-arn: Auto-GWLB
+  default-actions: Type=forward,TargetGroupArn=Auto-TG
+  action:
+    bind_to: 
+      - Auto-GWLB
+      - Auto-TG
+    cleanUP: True
+Auto-VPCE-Serv(VPCE_SERVICE):
+  gateway-load-balancer-arns: Auto-GWLB
+  no-acceptance-required:
+  action:
+    bind_to: Auto-GWLB
+    cleanUP: True
+'''
+    obj = aws(setting)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+    res = obj.raw_cli("aws ec2 describe-vpc-endpoint-service-configurations")
+    assert "Auto-VPCE-Serv" in res
+
+    obj.close()
+
+    obj2 = aws(setting)
+    atexit.register(obj2.close)
+    res2 = obj2.raw_cli("aws ec2 describe-vpc-endpoint-service-configurations")
+    assert "Auto-VPCE-Serv" not in res2
+
 @pytest.mark.disorder
 def test_disorder():
     cont ='''

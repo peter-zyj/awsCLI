@@ -61,7 +61,7 @@ class INTERNET_GATEWAY(resource):
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
+                if value and value != "None":
                     self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
@@ -106,7 +106,7 @@ class VPC(resource):
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
+                if value and value != "None":
                     self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
@@ -177,7 +177,7 @@ class SECURITY_GROUP(resource):
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
+                if value and value != "None":
                     value = '"' + value + '"' if " " in value else value
                     self.creation += " --" + key + " " + str(value)
                 else:
@@ -244,7 +244,7 @@ class SUBNET(resource):
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
+                if value and value != "None":
                     self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
@@ -283,7 +283,14 @@ class SUBNET(resource):
     def exec_termination(self, cli_handler):
         if not self.keepAlive:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            cli_handler.raw_cli_res(self.termination)
+
+            while True:
+                res = cli_handler.raw_cli_res(self.termination)
+                if "has dependencies and cannot be deleted" in res:
+                    time.sleep(5)
+                else:
+                    break
+
 
 
 class GATEWAY_LOAD_BALANCE(resource):
@@ -299,7 +306,7 @@ class GATEWAY_LOAD_BALANCE(resource):
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
+                if value and value != "None":
                     self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
@@ -350,7 +357,7 @@ class TARGET_GROUP(resource):
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
+                if value and value != "None":
                     self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
@@ -400,7 +407,7 @@ class LISTENER(resource):
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
+                if value and value != "None":
                     self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
@@ -447,20 +454,23 @@ class VPCE_SERVICE(resource):
         self.raw_yaml = content
         self.creation = "aws ec2 create-vpc-endpoint-service-configuration"
         self.termination = "aws ec2 delete-vpc-endpoint-service-configurations"
+        self.reName = "aws ec2 create-tags"
         self.ID = None
         self._cmd_composition()
 
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
-                    self.creation += " --" + key + str(value)
+                if value and value != "None":
+                    self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
             else:
                 self._action_handler(value)
 
-        self.termination += "--service-ids" + " " + "self.ID"
+        self.termination += " --service-ids" + " " + "self.ID"
+        if self.name:
+            self.reName += " --tag" + " " + f"Key=Name,Value={self.name}" + " " + "--resources" + " " + "self.ID"
 
     def _action_handler(self, action_yaml):
         for key, value in action_yaml.items():
@@ -473,10 +483,31 @@ class VPCE_SERVICE(resource):
                 self.keepAlive = False if str(value).lower() == "true" else True
 
     def exec_creation(self, cli_handler):
-        pass
+        if self.creation_dependency:
+            for res in self.creation_dependency:
+                res_obj = cli_handler.res_deployment[res]
+                if type(res_obj).__name__ == "GATEWAY_LOAD_BALANCE":
+                    gwlb_id = cli_handler.find_id(res)
+                    str_gwlbID = f"--gateway-load-balancer-arns {gwlb_id}"
+                    self.creation = re.sub(r"--gateway-load-balancer-arns .*?(?=( --|$))", str_gwlbID, self.creation)
+
+        while True:
+            res = cli_handler.raw_cli_res(self.creation)
+            if "must be in the active state" in res:
+                time.sleep(5)
+            else:
+                break
+
+        self.ID = re.compile(r'ServiceId: (.*)').findall(res)[0].strip()
+
+        if self.name:
+            self.reName = self.reName.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.reName)
 
     def exec_termination(self, cli_handler):
-        pass
+        if not self.keepAlive:
+            self.termination = self.termination.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.termination)
 
 
 class GATEWAY_LOAD_BALANCE_ENDPOINT(resource):
