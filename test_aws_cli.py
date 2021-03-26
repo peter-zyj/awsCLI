@@ -464,15 +464,17 @@ Auto-LIST(LISTENER):
     obj.load_deployment(content=cont)
     obj.start_deployment()
 
-    res = obj.raw_cli("aws elbv2 describe-target-groups")
-    assert "Auto-TG" in res
+    gwlb_id = obj.find_id("Auto-GWLB")
+    res = obj.raw_cli(f"aws elbv2 describe-listeners --load-balancer-arn {gwlb_id}")
+    list_id = obj.find_id("Auto-LIST")
+    assert list_id in res
 
     obj.close()
 
     obj2 = aws(setting)
     atexit.register(obj2.close)
-    res2 = obj2.raw_cli("aws elbv2 describe-target-groups")
-    assert "Auto-TG" not in res2
+    res2 = obj2.raw_cli("aws elbv2 describe-load-balancers")
+    assert "Auto-GWLB" not in res2
 
 @pytest.mark.disorder
 def test_disorder():
