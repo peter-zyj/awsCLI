@@ -451,9 +451,11 @@ Auto-TG(TARGET_GROUP):
     cleanUP: True
 Auto-LIST(LISTENER):
   load-balancer-arn: Auto-GWLB
-  default-actions: Type=forward,TargetGroupArn=Auto_TG
+  default-actions: Type=forward,TargetGroupArn=Auto-TG
   action:
-    bind_to: Auto-GWLB
+    bind_to: 
+      - Auto-GWLB
+      - Auto-TG
     cleanUP: True
 '''
     obj = aws(setting)

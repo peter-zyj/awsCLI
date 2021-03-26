@@ -212,7 +212,7 @@ class SECURITY_GROUP(resource):
                 if type(res_obj).__name__ == "VPC":
                     vpc_id = cli_handler.find_id(vpc)
                     str_vpcID = f"--vpc-id {vpc_id}"
-                    self.creation = re.sub(r"--vpc-id .*?(?=( |$))", str_vpcID, self.creation)
+                    self.creation = re.sub(r"--vpc-id .*?(?=( --|$))", str_vpcID, self.creation)
 
         res = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'GroupId: (.*)').findall(res)[0].strip()
@@ -272,7 +272,7 @@ class SUBNET(resource):
                 if type(res_obj).__name__ == "VPC":
                     vpc_id = cli_handler.find_id(vpc)
                     str_vpcID = f"--vpc-id {vpc_id}"
-                    self.creation = re.sub(r"--vpc-id .*?(?=( |$))", str_vpcID, self.creation)
+                    self.creation = re.sub(r"--vpc-id .*?(?=( --|$))", str_vpcID, self.creation)
         res = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'SubnetId: (.*)').findall(res)[0].strip()
         if self.name:
@@ -376,7 +376,7 @@ class TARGET_GROUP(resource):
                 if type(res_obj).__name__ == "VPC":
                     vpc_id = cli_handler.find_id(vpc)
                     str_vpcID = f"--vpc-id {vpc_id}"
-                    self.creation = re.sub(r"--vpc-id .*?(?=( |$))", str_vpcID, self.creation)
+                    self.creation = re.sub(r"--vpc-id .*?(?=( --|$))", str_vpcID, self.creation)
 
         res = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'TargetGroupArn: (.*)').findall(res)[0].strip()
@@ -392,8 +392,8 @@ class LISTENER(resource):
         super().__init__()
         self.name = tagName
         self.raw_yaml = content
-        self.creation = "aws ec2 create-listener"
-        self.termination = "aws ec2 delete-listener"
+        self.creation = "aws elbv2 create-listener"
+        self.termination = "aws elbv2 delete-listener"
         self.ID = None
         self._cmd_composition()
 
@@ -401,13 +401,13 @@ class LISTENER(resource):
         for key, value in self.raw_yaml.items():
             if key != "action":
                 if value:
-                    self.creation += " --" + key + str(value)
+                    self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
             else:
                 self._action_handler(value)
 
-        self.termination += "--listener-arn" + " " + "self.ID"
+        self.termination += " --listener-arn" + " " + "self.ID"
 
     def _action_handler(self, action_yaml):
         for key, value in action_yaml.items():
@@ -420,10 +420,24 @@ class LISTENER(resource):
                 self.keepAlive = False if str(value).lower() == "true" else True
 
     def exec_creation(self, cli_handler):
-        pass
+        if self.creation_dependency:
+            for res in self.creation_dependency:
+                res_obj = cli_handler.res_deployment[res]
+                if type(res_obj).__name__ == "TARGET_GROUP":
+                    tg_id = cli_handler.find_id(res)
+                    str_tgID = f"TargetGroupArn={tg_id}"
+                    self.creation = re.sub(r"TargetGroupArn=.*?(?=(,| --|$))", str_tgID, self.creation)
+                elif type(res_obj).__name__ == "GATEWAY_LOAD_BALANCE":
+                    gwlb_id = cli_handler.find_id(res)
+                    str_gwlbID = f"--load-balancer-arn {gwlb_id}"
+                    self.creation = re.sub(r"--load-balancer-arn .*?(?=( --|$))", str_gwlbID, self.creation)
+        res = cli_handler.raw_cli_res(self.creation)
+        self.ID = re.compile(r'ListenerArn: (.*)').findall(res)[0].strip()
 
     def exec_termination(self, cli_handler):
-        pass
+        if not self.keepAlive:
+            self.termination = self.termination.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.termination)
 
 
 class VPCE_SERVICE(resource):
