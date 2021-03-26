@@ -598,14 +598,14 @@ class ROUTE(resource):
         for key, value in self.raw_yaml.items():
             if key != "action":
                 if value:
-                    self.creation += " --" + key + str(value)
+                    self.creation += " --" + key + " " +str(value)
                 else:
                     self.creation += " --" + key
             else:
                 self._action_handler(value)
 
-        self.termination += "--route-table-id" + " " + "self.rtb_id" + "--destination-cidr-block" + \
-                            self.raw_yaml["destination-cidr-block"]
+        self.termination += " --route-table-id" + " " + "self.rtb_id" + " --destination-cidr-block" + \
+                            " " + self.raw_yaml["destination-cidr-block"]
 
     def _action_handler(self, action_yaml):
         for key, value in action_yaml.items():
@@ -619,23 +619,39 @@ class ROUTE(resource):
 
     def exec_creation(self, cli_handler):
         # consider {VPC} case
-        if re.compile(r"\{(.*?)\}").findall(self.creation) != []:
-            vpc = re.compile(r"\{(.*?)\}").findall(self.creation)[0]
-            # pre_cmd = "aws ec2 describe-route-tables"
-            vpc_id = cli_handler.find_id(vpc)
-            try:
-                rtb_id = self._map_vps_route_id(cli_handler, vpc_id)
-                self.rtb_id = rtb_id
-            except Exception as e:
-                print("[ERROR][ROUTE][_map_vps_route_id]:", e)
-                return
-            self.creation = re.sub(r"\{.*?\}", rtb_id, self.creation)
-
+        if self.creation_dependency:
+            for res in self.creation_dependency:
+                res_obj = cli_handler.res_deployment[res]
+                if type(res_obj).__name__ == "VPC":
+                    try:
+                        resName = re.compile(r"--route-table-id \{(.*?)\}").findall(self.creation)[0]
+                        if resName == res:
+                            vpc_id = cli_handler.find_id(resName)
+                            try:
+                                rtb_id = self._map_vps_route_id(cli_handler, vpc_id)
+                                self.rtb_id = rtb_id
+                            except Exception as e:
+                                print("[ERROR][ROUTE][_map_vps_route_id]:", e)
+                                return
+                            rtb_id = "--route-table-id " + rtb_id
+                            self.creation = re.sub(r"--route-table-id \{.*?\}", rtb_id, self.creation)
+                    except:
+                        print("[Warning][ROUTE][exec_creation]: no VPC in command line, but it exist in dependency")
+                elif type(res_obj).__name__ == "INTERNET_GATEWAY":
+                    igw_id = cli_handler.find_id(res)
+                    str_igwID = f"--gateway-id {igw_id}"
+                    self.creation = re.sub(r"--gateway-id .*?(?=( --|$))", str_igwID, self.creation)
+                elif type(res_obj).__name__ == "ROUTE_TABLE":
+                    rt_id = cli_handler.find_id(res)
+                    str_rtID = f"--route-table-id {rt_id}"
+                    self.creation = re.sub(r"--route-table-id .*?(?=( --|$))", str_rtID, self.creation)
         res = cli_handler.raw_cli_res(self.creation)
-        pass
+
 
     def exec_termination(self, cli_handler):
-        pass
+        if not self.keepAlive:
+            self.termination = self.termination.replace("self.rtb_id", str(self.rtb_id))
+            cli_handler.raw_cli_res(self.termination)
 
     def _map_vps_route_id(self, cli_handler, vpc_id):
         res = cli_handler.raw_cli_res("aws ec2 describe-route-tables")
