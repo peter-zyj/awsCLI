@@ -726,8 +726,8 @@ Auto-GWLBE(GATEWAY_LOAD_BALANCE_ENDPOINT):
       - Auto_SUB_Sec
     cleanUP: True
 Auto_RT_Sec_Main(ROUTE):
-  route-table-id: {Auto_VPC_App}
-  destination-cidr-block: 0.0.0.0/0
+  route-table-id: '@Auto_VPC_App@'
+  destination-cidr-block: 9.8.7.6/24
   gateway-id: Auto_IG_App
   action:
     bind_to:
@@ -741,15 +741,15 @@ Auto_RT_Sec_Main(ROUTE):
     obj.load_deployment(content=cont)
     obj.start_deployment()
 
-    res = obj.raw_cli("aws ec2 describe-vpc-endpoints")
-    assert "Auto-GWLBE" in res
+    res = obj.raw_cli("aws ec2 describe-route-tables")
+    assert "9.8.7.0" in res
 
     obj.close()
 
     obj2 = aws(setting)
     atexit.register(obj2.close)
-    res2 = obj2.raw_cli("aws ec2 describe-vpc-endpoints")
-    assert "Auto-GWLBE" not in res2
+    res2 = obj2.raw_cli("aws ec2 describe-route-tables")
+    assert "9.8.7.0" not in res2
 
 
 @pytest.mark.disorder

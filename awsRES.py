@@ -624,18 +624,13 @@ class ROUTE(resource):
                 res_obj = cli_handler.res_deployment[res]
                 if type(res_obj).__name__ == "VPC":
                     try:
-                        resName = re.compile(r"--route-table-id \{(.*?)\}").findall(self.creation)[0]
+                        resName = re.compile(r"--route-table-id @(.*?)@").findall(self.creation)[0]
                         if resName == res:
                             vpc_id = cli_handler.find_id(resName)
-                            try:
-                                rtb_id = self._map_vps_route_id(cli_handler, vpc_id)
-                                self.rtb_id = rtb_id
-                            except Exception as e:
-                                print("[ERROR][ROUTE][_map_vps_route_id]:", e)
-                                return
-                            rtb_id = "--route-table-id " + rtb_id
-                            self.creation = re.sub(r"--route-table-id \{.*?\}", rtb_id, self.creation)
-                    except:
+                            self.rtb_id = self._map_vps_route_id(cli_handler, vpc_id)
+                            rtb_id = "--route-table-id " + self.rtb_id
+                            self.creation = re.sub(r"--route-table-id @.*?@", rtb_id, self.creation)
+                    except IndexError:
                         print("[Warning][ROUTE][exec_creation]: no VPC in command line, but it exist in dependency")
                 elif type(res_obj).__name__ == "INTERNET_GATEWAY":
                     igw_id = cli_handler.find_id(res)
@@ -654,10 +649,13 @@ class ROUTE(resource):
             cli_handler.raw_cli_res(self.termination)
 
     def _map_vps_route_id(self, cli_handler, vpc_id):
-        res = cli_handler.raw_cli_res("aws ec2 describe-route-tables")
-        pattern = f'(?s)RouteTableId(?:[^R]|R(?!outeTableId))*?VpcId: {vpc_id})'
-        filter = re.compile(pattern).findall(res)[0]
-        return re.compile(r"RouteTableId: (.*)").findall(filter)[0]
+        try:
+            res = cli_handler.raw_cli_res("aws ec2 describe-route-tables")
+            pattern = f'(?s)RouteTableId(?:[^R]|R(?!outeTableId))*?VpcId: {vpc_id}'
+            filter = re.compile(pattern).findall(res)[0]
+            return re.compile(r"RouteTableId: (.*)").findall(filter)[0]
+        except Exception as e:
+            print("[Warning][ROUTE][_map_vps_route_id]:", e)
 
 
 class ROUTE_TABLE(resource):
