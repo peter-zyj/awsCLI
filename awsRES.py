@@ -644,7 +644,13 @@ class ROUTE(resource):
                     gwlbe_id = cli_handler.find_id(res)
                     str_gwlbeID = f"--vpc-endpoint-id {gwlbe_id}"
                     self.creation = re.sub(r"--vpc-endpoint-id .*?(?=( --|$))", str_gwlbeID, self.creation)
-        res = cli_handler.raw_cli_res(self.creation)
+
+        while True:
+            res = cli_handler.raw_cli_res(self.creation)
+            if "VPC Endpoints of this type cannot be used as route targets" in res:
+                time.sleep(5)
+            else:
+                break
 
 
     def exec_termination(self, cli_handler):
@@ -670,7 +676,7 @@ class ROUTE_TABLE(resource):
         self.creation = "aws ec2 create-route-table"
         self.termination = "aws ec2 delete-route-table"
         self.sub_route = []
-        self.reName = None
+        self.reName = "aws ec2 create-tags"
         self.ID = None
         self._cmd_composition()
 
@@ -698,11 +704,14 @@ class ROUTE_TABLE(resource):
             elif key == "sub_route":
                 for rt in value:
                     sub_route = ROUTE("sub-route", rt)
-                    if sub_route.creation_dependency:
-                        self.creation_dependency += sub_route.creation_dependency
                     self.sub_route.append(sub_route)
             elif key == "cleanUP":
                 self.keepAlive = False if str(value).lower() == "true" else True
+
+        for rt in self.sub_route:
+            for dep in rt.creation_dependency:
+                if dep not in self.creation_dependency and dep != self.name:
+                    self.creation_dependency.append(dep)
 
     def exec_creation(self, cli_handler):
         # create rt_table

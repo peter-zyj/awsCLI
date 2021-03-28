@@ -844,7 +844,9 @@ Auto_RTT_Sec(ROUTE_TABLE):
         destination-cidr-block: 1.2.3.4/24
         vpc-endpoint-id: Auto-GWLBE
         action:
-          bind_to: Auto-GWLBE
+          bind_to: 
+            - Auto-GWLBE
+            - Auto_RTT_Sec
     bind_to: Auto_VPC_App
     cleanUP: True
 '''
@@ -864,7 +866,7 @@ Auto_RTT_Sec(ROUTE_TABLE):
     atexit.register(obj2.close)
     res2 = obj2.raw_cli("aws ec2 describe-route-tables")
     assert "1.2.3.0" not in res2
-    assert "Auto_RTT_Sec" not in res
+    assert "Auto_RTT_Sec" not in res2
 
 @pytest.mark.disorder
 def test_disorder():

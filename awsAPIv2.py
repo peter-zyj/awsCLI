@@ -395,6 +395,7 @@ class aws(object):
         candi_res = {}
         for name, res_obj in res_deployment.items():
             candi_res[name] = res_obj.get_creation_dependency()
+
         num = 0
         while len(pop_list) != leng:
             for name,s_value in candi_res.items():
@@ -413,7 +414,7 @@ class aws(object):
             if num % 100 == 0:
                 print("[Info]::Created List:", pop_list)
                 print("[Info]::Waiting List:", candi_res)
-                print_color("[Warning][awsAPI][_creation_sort]: the Loop reach {num} times", "yellow")
+                print_color(f"[Warning][awsAPI][_creation_sort]: the Loop reach {num} times", "yellow")
                 res = input("Do you really have so many objects to create? or software hit dead loop? Continue or Quit[C/Q]")
                 if res.lower() != 'c':
                     print_color("[Info][awsAPI][_creation_sort]: Quit the Application", "black")
