@@ -640,6 +640,10 @@ class ROUTE(resource):
                     rt_id = cli_handler.find_id(res)
                     str_rtID = f"--route-table-id {rt_id}"
                     self.creation = re.sub(r"--route-table-id .*?(?=( --|$))", str_rtID, self.creation)
+                elif type(res_obj).__name__ == "GATEWAY_LOAD_BALANCE_ENDPOINT":
+                    gwlbe_id = cli_handler.find_id(res)
+                    str_gwlbeID = f"--vpc-endpoint-id {gwlbe_id}"
+                    self.creation = re.sub(r"--vpc-endpoint-id .*?(?=( --|$))", str_gwlbeID, self.creation)
         res = cli_handler.raw_cli_res(self.creation)
 
 
@@ -703,10 +707,28 @@ class ROUTE_TABLE(resource):
     def exec_creation(self, cli_handler):
         # create rt_table
         # add route under rt table
-        pass
+        if self.creation_dependency:
+            for vpc in self.creation_dependency:
+                res_obj = cli_handler.res_deployment[vpc]
+                if type(res_obj).__name__ == "VPC":
+                    vpc_id = cli_handler.find_id(vpc)
+                    str_vpcID = f"--vpc-id {vpc_id}"
+                    self.creation = re.sub(r"--vpc-id .*?(?=( --|$))", str_vpcID, self.creation)
+
+        res = cli_handler.raw_cli_res(self.creation)
+        self.ID = re.compile(r'RouteTableId: (.*)').findall(res)[0].strip()
+
+        if self.name:
+            self.reName = self.reName.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.reName)
+
+        for rt in self.sub_route:
+            rt.exec_creation(cli_handler)
 
     def exec_termination(self, cli_handler):
-        pass
+        if not self.keepAlive:
+            self.termination = self.termination.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.termination)
 
 
 class ROUTE_ASSOCIATE(resource):
