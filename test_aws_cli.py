@@ -752,6 +752,120 @@ Auto_RT_Sec_Main(ROUTE):
     assert "9.8.7.0" not in res2
 
 
+@pytest.mark.deploy
+@pytest.mark.routetb
+def test_ROUTE_TABLE():
+    cont ='''
+Auto_IG_App(INTERNET_GATEWAY):
+  action:
+    cleanUP: True
+Auto_VPC_App(VPC):
+  cidr-block: 10.0.0.0/16
+  action:
+    bind_to: Auto_IG_App
+    cleanUP: True
+Auto_SG_App(SECURITY_GROUP):
+  vpc-id: Auto_VPC_App
+  description: My security group
+  action:
+    authorize-security-group-ingress:
+      - protocol: tcp
+        port: 22
+        cidr: 0.0.0.0/0
+      - protocol: tcp
+        port: 80
+        cidr: 0.0.0.0/0
+      - protocol: icmp
+        port: all
+        cidr: 0.0.0.0/0
+      - protocol: udp
+        port: 6081
+        cidr: 0.0.0.0/0
+    bind_to: Auto_VPC_App
+    cleanUP: True
+Auto_SUB_Sec(SUBNET):
+  vpc-id: Auto_VPC_App
+  cidr-block: 10.0.1.0/24
+  action:
+    bind_to: Auto_VPC_App
+    cleanUP: True
+Auto-GWLB(GATEWAY_LOAD_BALANCE):
+  type: gateway
+  subnets: Auto_SUB_Sec
+  action:
+    bind_to: Auto_SUB_Sec
+    cleanUP: True
+Auto-TG(TARGET_GROUP):
+  protocol: GENEVE
+  port: 6081
+  vpc-id: Auto_VPC_App
+  action:
+    bind_to: Auto_VPC_App
+    cleanUP: True
+Auto-LIST(LISTENER):
+  load-balancer-arn: Auto-GWLB
+  default-actions: Type=forward,TargetGroupArn=Auto-TG
+  action:
+    bind_to: 
+      - Auto-GWLB
+      - Auto-TG
+    cleanUP: True
+Auto-VPCE-Serv(VPCE_SERVICE):
+  gateway-load-balancer-arns: Auto-GWLB
+  no-acceptance-required:
+  action:
+    bind_to: Auto-GWLB
+    cleanUP: True
+Auto-GWLBE(GATEWAY_LOAD_BALANCE_ENDPOINT):
+  vpc-endpoint-type: GatewayLoadBalancer
+  service-name: Auto-VPCE-Serv
+  vpc-id: Auto_VPC_App
+  subnet-ids: Auto_SUB_Sec
+  action:
+    bind_to:
+      - Auto-VPCE-Serv
+      - Auto_VPC_App
+      - Auto_SUB_Sec
+    cleanUP: True
+Auto_RT_Sec_Main(ROUTE):
+  route-table-id: '@Auto_VPC_App@'
+  destination-cidr-block: 9.8.7.6/24
+  gateway-id: Auto_IG_App
+  action:
+    bind_to:
+      - Auto_IG_App
+      - Auto_VPC_App
+    cleanUP: True
+Auto_RTT_Sec(ROUTE_TABLE):
+  vpc-id: Auto_VPC_App
+  action:
+    sub_route:
+      - route-table-id: Auto_RTT_Sec
+        destination-cidr-block: 1.2.3.4/24
+        vpc-endpoint-id: Auto-GWLBE
+        action:
+          bind_to: Auto-GWLBE
+    bind_to: Auto_VPC_App
+    cleanUP: True
+'''
+    obj = aws(setting)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+    res = obj.raw_cli("aws ec2 describe-route-tables")
+    assert "1.2.3.0" in res
+    assert "Auto_RTT_Sec" in res
+
+    obj.close()
+
+    obj2 = aws(setting)
+    atexit.register(obj2.close)
+    res2 = obj2.raw_cli("aws ec2 describe-route-tables")
+    assert "1.2.3.0" not in res2
+    assert "Auto_RTT_Sec" not in res
+
 @pytest.mark.disorder
 def test_disorder():
     cont ='''

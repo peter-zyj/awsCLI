@@ -666,6 +666,7 @@ class ROUTE_TABLE(resource):
         self.creation = "aws ec2 create-route-table"
         self.termination = "aws ec2 delete-route-table"
         self.sub_route = []
+        self.reName = None
         self.ID = None
         self._cmd_composition()
 
@@ -673,13 +674,15 @@ class ROUTE_TABLE(resource):
         for key, value in self.raw_yaml.items():
             if key != "action":
                 if value:
-                    self.creation += " --" + key + str(value)
+                    self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
             else:
                 self._action_handler(value)
 
-        self.termination += "--route-table-id" + " " + "self.ID"
+        self.termination += " --route-table-id" + " " + "self.ID"
+        if self.name:
+            self.reName += " --tag" + " " + f"Key=Name,Value={self.name}" + " " + "--resources" + " " + "self.ID"
 
     def _action_handler(self, action_yaml):
         for key, value in action_yaml.items():
@@ -690,7 +693,9 @@ class ROUTE_TABLE(resource):
                     self.creation_dependency = value
             elif key == "sub_route":
                 for rt in value:
-                    sub_route = ROUTE("noRTName", rt)
+                    sub_route = ROUTE("sub-route", rt)
+                    if sub_route.creation_dependency:
+                        self.creation_dependency += sub_route.creation_dependency
                     self.sub_route.append(sub_route)
             elif key == "cleanUP":
                 self.keepAlive = False if str(value).lower() == "true" else True
