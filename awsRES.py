@@ -4,7 +4,7 @@ import shutil, atexit
 import subprocess
 import yaml
 
-from awsAPI import aws
+from awsAPI import aws, print_color
 
 
 class resource(object):
@@ -597,7 +597,7 @@ class ROUTE(resource):
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
+                if value and value != "None":
                     self.creation += " --" + key + " " +str(value)
                 else:
                     self.creation += " --" + key
@@ -683,7 +683,7 @@ class ROUTE_TABLE(resource):
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
+                if value and value != "None":
                     self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
@@ -753,7 +753,7 @@ class ROUTE_ASSOCIATE(resource):
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
+                if value and value != "None":
                     self.creation += " --" + key + " " +str(value)
                 else:
                     self.creation += " --" + key
@@ -807,7 +807,7 @@ class REGISTER(resource):
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
+                if value and value != "None":
                     self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
@@ -853,25 +853,25 @@ class EC2INSTANCE(resource):
         self.name = tagName
         self.raw_yaml = content
         self.creation = "aws ec2 run-instances"
-        self.termination = "aws ec2 terminate-instance"
+        self.termination = "aws ec2 terminate-instances"
         self.reName = "aws ec2 create-tags"
-        self.ID = None
+        self.ID = {}
         self.cmd = None
         self._cmd_composition()
 
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
-                if value:
-                    self.creation += " --" + key + str(value)
+                if value and value != "None":
+                    self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
             else:
                 self._action_handler(value)
 
-        self.termination += "--instance-ids" + " " + "self.ID"
+        self.termination += " --instance-ids" + " " + "self.ID"
         if self.name:
-            self.reName += "--tag" + " " + f"Key=Name,Value={self.name}" + " " + "--resources" + " " + "self.ID"
+            self.reName += " --tag" + " " + f"Key=Name,Value=self.temp_name" + " " + "--resources" + " " + "self.ID"
 
     def _action_handler(self, action_yaml):
         for key, value in action_yaml.items():
@@ -886,13 +886,107 @@ class EC2INSTANCE(resource):
                 self.keepAlive = False if str(value).lower() == "true" else True
 
     def exec_creation(self, cli_handler):
-        # consider the scenario of count >= 2
-        pass
+
+        if self.creation_dependency:
+            for res in self.creation_dependency:
+                res_obj = cli_handler.res_deployment[res]
+                if type(res_obj).__name__ == "SECURITY_GROUP":
+                    sg_id = cli_handler.find_id(res)
+                    str_sgID = f"--security-group-ids {sg_id}"
+                    self.creation = re.sub(r"--security-group-ids .*?(?=( --|$))", str_sgID, self.creation)
+                elif type(res_obj).__name__ == "SUBNET":
+                    sub_id = cli_handler.find_id(res)
+                    str_subID = f"--subnet-id {sub_id}"
+                    self.creation = re.sub(r"--subnet-id .*?(?=( --|$))", str_subID, self.creation)
+
+        resp = cli_handler.raw_cli_res(self.creation)
+
+        if "count" in self.raw_yaml:
+            num = int(self.raw_yaml["count"])
+        else:
+            num = 1
+
+        pattern = r'InstanceId:(.*)'
+        result = re.compile(pattern).findall(resp)
+        if len(result) != num:
+            print_color("[ERROR][EC2INSTANCE][exec_creation]: Unmatched instances number between expected and real world", "red")
+            return
+
+        for idx in range(num):
+            if num > 1:
+                name = f"{self.name}_{idx}"
+            else:
+                name = self.name
+
+            self.ID[name] = result[idx].strip()
+
+            self.reName = self.reName.replace("self.ID", str(self.ID[name]))
+            self.reName = self.reName.replace("self.temp_name", name)
+            cli_handler.raw_cli_res(self.reName)
+
+            if self.cmd:
+                self._cmd_handler(cli_handler, name)  # TBD
+
 
     def exec_termination(self, cli_handler):
-        pass
+        if not self.keepAlive and self.ID:
+            for id in self.ID.values():
+                self.termination = self.termination.replace("self.ID", str(id))
+                cli_handler.raw_cli_res(self.termination)
+
+    def _cmd_handler(self, cli_handler, name):
+        import paramiko
+
+
+        keyFile = self.raw_yaml["key-name"] + ".pem"
+        if not os.path.exists(keyFile):
+            print_color("[ERROR][EC2INSTANCE][_cmd_handler]: Key file not exist in working dir:"+os.getcwd(),"red")
+            return
+
+        resp = cli_handler.raw_cli_res(f"aws ec2 describe-instances --instance-ids {self.ID[name]}")
+        try:
+            publicIP = re.compile(r"PublicIpAddress: (.*)").findall(resp)[0].strip()
+        except IndexError:
+            print_color("[ERROR][EC2INSTANCE][_cmd_handler]: Public IP not found in instance {name}","red")
+            return
+
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(publicIP, username='ec2-user', password='', key_filename=keyFile)
+
+        if type(self.cmd).__name__ == "str":
+            stdin, stdout, stderr = ssh.exec_command(self.cmd)
+            if not stderr:
+                print_color(f"[ERROR][EC2INSTANCE][_cmd_handler][command_error]:{self.cmd}->{stderr}","red")
+            if not stdout:
+                print_color(stdout, "green")
+
+        elif type(self.cmd).__name__ == "list":
+            for cmd in self.cmd:
+                stdin, stdout, stderr = ssh.exec_command(cmd)
+                if not stderr:
+                    print_color(f"[ERROR][EC2INSTANCE][_cmd_handler][command_error]:{cmd}->{stderr}", "red")
+                if not stdout:
+                    print_color(stdout, "green")
+
+        elif type(self.cmd).__name__ == "dict":
+            #tbd
+            print_color(f"[ERROR][EC2INSTANCE][_cmd_handler]: Unsupport command type:{self.cmd}", "red")
+        else:
+            print_color(f"[ERROR][EC2INSTANCE][_cmd_handler]: Unknown command type:{self.cmd}", "red")
+
+        ssh.close()
 
 
 if __name__ == "__main__":
-    res = EC2INSTANCE()
-    res.exec_creation()
+    import paramiko
+
+    ssh = paramiko.SSHClient()
+
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    ssh.connect('18.217.13.1', username='ec2-user', password='',key_filename='./testMonkey.pem')
+
+    stdin, stdout, stderr = ssh.exec_command('uname -a')
+    print(stdout.readlines())
+    ssh.close()
