@@ -754,13 +754,13 @@ class ROUTE_ASSOCIATE(resource):
         for key, value in self.raw_yaml.items():
             if key != "action":
                 if value:
-                    self.creation += " --" + key + str(value)
+                    self.creation += " --" + key + " " +str(value)
                 else:
                     self.creation += " --" + key
             else:
                 self._action_handler(value)
 
-        self.termination += "--association-id" + " " + "self.ID"
+        self.termination += " --association-id" + " " + "self.ID"
 
     def _action_handler(self, action_yaml):
         for key, value in action_yaml.items():
@@ -773,10 +773,25 @@ class ROUTE_ASSOCIATE(resource):
                 self.keepAlive = False if str(value).lower() == "true" else True
 
     def exec_creation(self, cli_handler):
-        pass
+        if self.creation_dependency:
+            for res in self.creation_dependency:
+                res_obj = cli_handler.res_deployment[res]
+                if type(res_obj).__name__ == "SUBNET":
+                    sub_id = cli_handler.find_id(res)
+                    str_subID = f"--subnet-id {sub_id}"
+                    self.creation = re.sub(r"--subnet-id .*?(?=( --|$))", str_subID, self.creation)
+                elif type(res_obj).__name__ == "ROUTE_TABLE":
+                    rt_id = cli_handler.find_id(res)
+                    str_rtID = f"--route-table-id {rt_id}"
+                    self.creation = re.sub(r"--route-table-id .*?(?=( --|$))", str_rtID, self.creation)
+
+        resp = cli_handler.raw_cli_res(self.creation)
+        self.ID = re.compile(r'AssociationId: (.*)').findall(resp)[0].strip()
 
     def exec_termination(self, cli_handler):
-        pass
+        if not self.keepAlive:
+            self.termination = self.termination.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.termination)
 
 
 class REGISTER(resource):
