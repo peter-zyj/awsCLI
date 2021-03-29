@@ -808,7 +808,7 @@ class REGISTER(resource):
         for key, value in self.raw_yaml.items():
             if key != "action":
                 if value:
-                    self.creation += " --" + key + str(value)
+                    self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
             else:
@@ -827,10 +827,24 @@ class REGISTER(resource):
                 self.keepAlive = False if str(value).lower() == "true" else True
 
     def exec_creation(self, cli_handler):
-        pass
+        if self.creation_dependency:
+            for res in self.creation_dependency:
+                res_obj = cli_handler.res_deployment[res]
+                if type(res_obj).__name__ == "EC2INSTANCE":
+                    ec2inst_id = cli_handler.find_id(res)
+                    str_ec2ID = f"--subnet-id {ec2inst_id}"
+                    self.creation = re.sub(r"--subnet-id .*?(?=( --|$))", str_ec2ID, self.creation)
+                elif type(res_obj).__name__ == "TARGET_GROUP":
+                    tg_id = cli_handler.find_id(res)
+                    str_tgID = f"target-group-arn={tg_id}"
+                    self.creation = re.sub(r"target-group-arn=.*?(?=(,| --|$))", str_tgID, self.creation)
+
+        resp = cli_handler.raw_cli_res(self.creation)
+        self.ID = None
 
     def exec_termination(self, cli_handler):
-        pass
+        if not self.keepAlive:
+            cli_handler.raw_cli_res(self.termination)
 
 
 class EC2INSTANCE(resource):
