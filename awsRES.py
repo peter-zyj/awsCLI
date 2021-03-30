@@ -927,9 +927,9 @@ class EC2INSTANCE(resource):
 
             self.ID[name] = result[idx].strip()
 
-            self.reName = self.reName.replace("self.ID", str(self.ID[name]))
-            self.reName = self.reName.replace("self.temp_name", name)
-            cli_handler.raw_cli_res(self.reName)
+            reName = self.reName.replace("self.ID", str(self.ID[name]))
+            reName = reName.replace("self.temp_name", name)
+            cli_handler.raw_cli_res(reName)
 
             if self.cmd:
                 self._add_global_access(cli_handler, sg_id)
@@ -940,8 +940,8 @@ class EC2INSTANCE(resource):
             if self.mainRT_disable:
                 cli_handler.raw_cli_res(self.mainRT_disable)
             for id in self.ID.values():
-                self.termination = self.termination.replace("self.ID", str(id))
-                cli_handler.raw_cli_res(self.termination)
+                termination = self.termination.replace("self.ID", str(id))
+                cli_handler.raw_cli_res(termination)
 
     def _add_global_access(self, cli_handler, sg_id):
         # get main route from SG
@@ -982,7 +982,6 @@ class EC2INSTANCE(resource):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         while True:
-            # print("SSH connecting ........")
             try:
                 ssh.connect(publicIP, username='ec2-user', password='', key_filename=keyFile)
                 break
@@ -992,23 +991,26 @@ class EC2INSTANCE(resource):
         if type(self.cmd).__name__ == "str":
             stdin, stdout, stderr = ssh.exec_command(self.cmd)
             if stderr:
-                print_color(f"[Warning][EC2INSTANCE][_cmd_handler][command_error]:{self.cmd}->{stderr}", "yellow")
+                print_color(f"[Warning][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd}=>{stderr}", "yellow")
             if stdout:
                 print_color(stdout, "green")
+            del stdin, stdout, stderr
         elif type(self.cmd).__name__ == "list":
             for cmd in self.cmd:
                 stdin, stdout, stderr = ssh.exec_command(cmd)
                 if stderr:
-                    print_color(f"[ERROR][EC2INSTANCE][_cmd_handler][command_error]:{cmd}->{stderr}", "red")
+                    print_color(f"[ERROR][EC2INSTANCE][_cmd_handler][{name}]:{cmd}=>{stderr}", "red")
                 if stdout:
                     print_color(stdout, "green")
-
+                del stdin, stdout, stderr
         elif type(self.cmd).__name__ == "dict":
             print_color(f"[ERROR][EC2INSTANCE][_cmd_handler]: Unsupport command type:{self.cmd}", "red")
         else:
             print_color(f"[ERROR][EC2INSTANCE][_cmd_handler]: Unknown command type:{self.cmd}", "red")
 
+
         ssh.close()
+        del ssh
 
 
 if __name__ == "__main__":
@@ -1022,4 +1024,12 @@ if __name__ == "__main__":
 
     stdin, stdout, stderr = ssh.exec_command('uname -a')
     print(stdout.readlines())
+    ssh.close()
+    ssh.connect('18.217.13.1', username='ec2-user', password='', key_filename='./testMonkey.pem')
+    stdin, stdout, stderr = ssh.exec_command('date')
+    print(stdout.readlines())
+    ssh.close()
+    print("~~~~~~`")
+    ssh.close()
+    print("~~~~~~`")
     ssh.close()
