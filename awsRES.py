@@ -88,7 +88,7 @@ class INTERNET_GATEWAY(resource):
             cli_handler.raw_cli_res(self.reName)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive:
+        if not self.keepAlive and self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.termination)
 
@@ -150,7 +150,7 @@ class VPC(resource):
         cli_handler.raw_cli_res(self.attach)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive:
+        if not self.keepAlive and self.ID:
 
             if self.detach and self.creation_dependency:
                 for igw in self.creation_dependency:
@@ -228,7 +228,7 @@ class SECURITY_GROUP(resource):
             cli_handler.raw_cli_res(rule)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive:
+        if not self.keepAlive and self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.termination)
 
@@ -283,7 +283,7 @@ class SUBNET(resource):
             cli_handler.raw_cli_res(self.reName)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive:
+        if not self.keepAlive and self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
 
             while True:
@@ -341,7 +341,7 @@ class GATEWAY_LOAD_BALANCE(resource):
         self.ID = re.compile(r'LoadBalancerArn: (.*)').findall(res)[0].strip()
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive:
+        if not self.keepAlive and self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.termination)
 
@@ -353,6 +353,7 @@ class TARGET_GROUP(resource):
         self.raw_yaml = content
         self.creation = f"aws elbv2 create-target-group --name {self.name}"
         self.termination = "aws elbv2 delete-target-group"
+        self.tg_type = None
         self.ID = None
         self._cmd_composition()
 
@@ -389,9 +390,10 @@ class TARGET_GROUP(resource):
 
         res = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'TargetGroupArn: (.*)').findall(res)[0].strip()
+        self.tg_type = re.compile(r'TargetType: (.*)').findall(res)[0].strip()
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive:
+        if not self.keepAlive and self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.termination)
 
@@ -444,7 +446,7 @@ class LISTENER(resource):
         self.ID = re.compile(r'ListenerArn: (.*)').findall(res)[0].strip()
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive:
+        if not self.keepAlive and self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.termination)
 
@@ -509,7 +511,7 @@ class VPCE_SERVICE(resource):
             cli_handler.raw_cli_res(self.reName)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive:
+        if not self.keepAlive and self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.termination)
 
@@ -578,7 +580,7 @@ class GATEWAY_LOAD_BALANCE_ENDPOINT(resource):
             cli_handler.raw_cli_res(self.reName)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive:
+        if not self.keepAlive and self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.termination)
 
@@ -653,7 +655,7 @@ class ROUTE(resource):
                 break
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive:
+        if not self.keepAlive and self.rtb_id:
             self.termination = self.termination.replace("self.rtb_id", str(self.rtb_id))
             cli_handler.raw_cli_res(self.termination)
 
@@ -734,7 +736,7 @@ class ROUTE_TABLE(resource):
             rt.exec_creation(cli_handler)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive:
+        if not self.keepAlive and self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.termination)
 
@@ -788,7 +790,7 @@ class ROUTE_ASSOCIATE(resource):
         self.ID = re.compile(r'AssociationId: (.*)').findall(resp)[0].strip()
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive:
+        if not self.keepAlive and self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.termination)
 
@@ -827,13 +829,23 @@ class REGISTER(resource):
 
     def exec_creation(self, cli_handler):
         if self.creation_dependency:
+            tg_type = None
             for res in self.creation_dependency:
                 res_obj = cli_handler.res_deployment[res]
                 if type(res_obj).__name__ == "EC2INSTANCE":
+                    if not tg_type:
+                        tmp_obj = cli_handler.res_deployment[self.raw_yaml["target-group-arn"]]
+                        tg_type = res_obj.tg_type
                     ec2inst_id = cli_handler.find_id(res)
-                    str_ec2ID = f"--subnet-id {ec2inst_id}"
-                    self.creation = re.sub(r"--subnet-id .*?(?=( --|$))", str_ec2ID, self.creation)
+                    ec2inst_ip = self._fetchPrivateIP(cli_handler, ec2inst_id)
+                    if tg_type == "instance":
+                        self.creation = self.creation.replace(res,ec2inst_id)
+                    elif tg_type == "ip":
+                        self.creation = self.creation.replace(res, ec2inst_ip)
+
                 elif type(res_obj).__name__ == "TARGET_GROUP":
+                    if not tg_type:
+                        tg_type = res_obj.tg_type
                     tg_id = cli_handler.find_id(res)
                     str_tgID = f"target-group-arn={tg_id}"
                     self.creation = re.sub(r"target-group-arn=.*?(?=(,| --|$))", str_tgID, self.creation)
@@ -844,6 +856,11 @@ class REGISTER(resource):
     def exec_termination(self, cli_handler):
         if not self.keepAlive:
             cli_handler.raw_cli_res(self.termination)
+
+    def _fetchPrivateIP(self, cli_handler, id):
+        resp = cli_handler.raw_cli_res(f"aws ec2 describe-instances --instance-ids {id}")
+        pattern = r'PrivateIpAddress: (.*)'
+        return re.compile(pattern).findall(resp)[0].strip()
 
 
 class EC2INSTANCE(resource):
@@ -1025,11 +1042,5 @@ if __name__ == "__main__":
     stdin, stdout, stderr = ssh.exec_command('uname -a')
     print(stdout.readlines())
     ssh.close()
-    ssh.connect('18.217.13.1', username='ec2-user', password='', key_filename='./testMonkey.pem')
-    stdin, stdout, stderr = ssh.exec_command('date')
-    print(stdout.readlines())
-    ssh.close()
-    print("~~~~~~`")
-    ssh.close()
-    print("~~~~~~`")
-    ssh.close()
+
+
