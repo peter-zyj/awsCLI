@@ -1053,12 +1053,16 @@ Auto_EC2_Sec(EC2INSTANCE):
     res = obj.raw_cli("aws ec2 describe-instances")
     assert "Auto_EC2_Sec" in res
 
+    id = obj.find_id("Auto_EC2_Sec")["Auto_EC2_Sec"]
+
     obj.close()
 
     obj2 = aws(setting)
     atexit.register(obj2.close)
-    res2 = obj2.raw_cli("aws ec2 describe-instances")
-    assert "Auto_EC2_Sec" not in res2
+    res2 = obj2.raw_cli(f"aws ec2 describe-instances --instance-ids {id}")
+    assert "Auto_EC2_Sec" in res2
+    assert "terminated" in res2
+
 
 @pytest.mark.disorder
 def test_disorder():

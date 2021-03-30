@@ -552,8 +552,8 @@ class GATEWAY_LOAD_BALANCE_ENDPOINT(resource):
 
     def exec_creation(self, cli_handler):
         if self.creation_dependency:
+            str_subID = "--subnet-ids"
             for res in self.creation_dependency:
-                str_subID = "--subnet-ids"
                 res_obj = cli_handler.res_deployment[res]
                 if type(res_obj).__name__ == "VPC":
                     vpc_id = cli_handler.find_id(res)
@@ -598,7 +598,7 @@ class ROUTE(resource):
         for key, value in self.raw_yaml.items():
             if key != "action":
                 if value and value != "None":
-                    self.creation += " --" + key + " " +str(value)
+                    self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
             else:
@@ -651,7 +651,6 @@ class ROUTE(resource):
                 time.sleep(5)
             else:
                 break
-
 
     def exec_termination(self, cli_handler):
         if not self.keepAlive:
@@ -754,7 +753,7 @@ class ROUTE_ASSOCIATE(resource):
         for key, value in self.raw_yaml.items():
             if key != "action":
                 if value and value != "None":
-                    self.creation += " --" + key + " " +str(value)
+                    self.creation += " --" + key + " " + str(value)
                 else:
                     self.creation += " --" + key
             else:
@@ -855,6 +854,8 @@ class EC2INSTANCE(resource):
         self.creation = "aws ec2 run-instances"
         self.termination = "aws ec2 terminate-instances"
         self.reName = "aws ec2 create-tags"
+        self.mainRT_disable = None
+        self.mainRT_enable = None
         self.ID = {}
         self.cmd = None
         self._cmd_composition()
@@ -888,8 +889,8 @@ class EC2INSTANCE(resource):
     def exec_creation(self, cli_handler):
 
         if self.creation_dependency:
+            str_sgID = "--security-group-ids"
             for res in self.creation_dependency:
-                str_sgID = "--security-group-ids"
                 res_obj = cli_handler.res_deployment[res]
                 if type(res_obj).__name__ == "SECURITY_GROUP":
                     sg_id = cli_handler.find_id(res)
@@ -913,7 +914,9 @@ class EC2INSTANCE(resource):
         pattern = r'InstanceId:(.*)'
         result = re.compile(pattern).findall(resp)
         if len(result) != num:
-            print_color("[ERROR][EC2INSTANCE][exec_creation]: Unmatched instances number between expected and real world", "red")
+            print_color(
+                "[ERROR][EC2INSTANCE][exec_creation]: Unmatched instances number between expected and real world",
+                "red")
             return
 
         for idx in range(num):
@@ -932,15 +935,16 @@ class EC2INSTANCE(resource):
                 self._add_global_access(cli_handler, sg_id)
                 self._cmd_handler(cli_handler, name)
 
-
     def exec_termination(self, cli_handler):
         if not self.keepAlive and self.ID:
+            if self.mainRT_disable:
+                cli_handler.raw_cli_res(self.mainRT_disable)
             for id in self.ID.values():
                 self.termination = self.termination.replace("self.ID", str(id))
                 cli_handler.raw_cli_res(self.termination)
 
     def _add_global_access(self, cli_handler, sg_id):
-        #get main route from SG
+        # get main route from SG
         if sg_id:
             resp1 = cli_handler.raw_cli_res(f"aws ec2 describe-security-groups --group-ids {sg_id}")
             vpc_id = re.compile(r"VpcId: (.*)").findall(resp1)[0]
@@ -953,43 +957,51 @@ class EC2INSTANCE(resource):
             resp3 = cli_handler.raw_cli_res("aws ec2 describe-internet-gateways")
             pattern3 = f'(?s)VpcId: {vpc_id}.*?InternetGatewayId: (igw-\w+)'
             igw_id = re.compile(pattern3).findall(resp3)[0]
-        #add IGW route to main
-            "aws ec2 create-route --route-table-id rtb-0d0cd971e645a6c53 --destination-cidr-block 0.0.0.0/0 --gateway-id igw-0c4bc11847f55f073"
+            # add IGW route to main
+            self.mainRT_enable = f"aws ec2 create-route --route-table-id {rt_id} --destination-cidr-block 0.0.0.0/0 " \
+                                 f"--gateway-id {igw_id}"
 
+            cli_handler.raw_cli_res(self.mainRT_enable)
+            self.mainRT_disable = f"aws ec2 delete-route --route-table-id {rt_id} --destination-cidr-block 0.0.0.0/0"
 
     def _cmd_handler(self, cli_handler, name):
         import paramiko
 
-
         keyFile = self.raw_yaml["key-name"] + ".pem"
         if not os.path.exists(keyFile):
-            print_color("[ERROR][EC2INSTANCE][_cmd_handler]: Key file not exist in working dir:"+os.getcwd(),"red")
+            print_color("[ERROR][EC2INSTANCE][_cmd_handler]: Key file not exist in working dir:" + os.getcwd(), "red")
             return
 
         resp = cli_handler.raw_cli_res(f"aws ec2 describe-instances --instance-ids {self.ID[name]}")
         try:
             publicIP = re.compile(r"PublicIpAddress: (.*)").findall(resp)[0].strip()
         except IndexError:
-            print_color("[ERROR][EC2INSTANCE][_cmd_handler]: Public IP not found in instance {name}","red")
+            print_color("[ERROR][EC2INSTANCE][_cmd_handler]: Public IP not found in instance {name}", "red")
             return
 
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(publicIP, username='ec2-user', password='', key_filename=keyFile)
+        while True:
+            print("SSH connecting ........")
+            try:
+                ssh.connect(publicIP, username='ec2-user', password='', key_filename=keyFile)
+                break
+            except:
+                time.sleep(5)
 
         if type(self.cmd).__name__ == "str":
+            print("SSH commanding ........:", self.cmd)
             stdin, stdout, stderr = ssh.exec_command(self.cmd)
-            if not stderr:
-                print_color(f"[ERROR][EC2INSTANCE][_cmd_handler][command_error]:{self.cmd}->{stderr}","red")
-            if not stdout:
+            if stderr:
+                print_color(f"[ERROR][EC2INSTANCE][_cmd_handler][command_error]:{self.cmd}->{stderr}", "red")
+            if stdout:
                 print_color(stdout, "green")
-
         elif type(self.cmd).__name__ == "list":
             for cmd in self.cmd:
                 stdin, stdout, stderr = ssh.exec_command(cmd)
-                if not stderr:
+                if stderr:
                     print_color(f"[ERROR][EC2INSTANCE][_cmd_handler][command_error]:{cmd}->{stderr}", "red")
-                if not stdout:
+                if stdout:
                     print_color(stdout, "green")
 
         elif type(self.cmd).__name__ == "dict":
@@ -1007,7 +1019,7 @@ if __name__ == "__main__":
 
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    ssh.connect('18.217.13.1', username='ec2-user', password='',key_filename='./testMonkey.pem')
+    ssh.connect('18.217.13.1', username='ec2-user', password='', key_filename='./testMonkey.pem')
 
     stdin, stdout, stderr = ssh.exec_command('uname -a')
     print(stdout.readlines())
