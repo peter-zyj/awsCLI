@@ -889,15 +889,19 @@ class EC2INSTANCE(resource):
 
         if self.creation_dependency:
             for res in self.creation_dependency:
+                str_sgID = "--security-group-ids"
                 res_obj = cli_handler.res_deployment[res]
                 if type(res_obj).__name__ == "SECURITY_GROUP":
                     sg_id = cli_handler.find_id(res)
-                    str_sgID = f"--security-group-ids {sg_id}"
-                    self.creation = re.sub(r"--security-group-ids .*?(?=( --|$))", str_sgID, self.creation)
+                    str_sgID += f" {sg_id}"
+
                 elif type(res_obj).__name__ == "SUBNET":
                     sub_id = cli_handler.find_id(res)
                     str_subID = f"--subnet-id {sub_id}"
                     self.creation = re.sub(r"--subnet-id .*?(?=( --|$))", str_subID, self.creation)
+
+            if str_sgID != "--security-group-ids":
+                self.creation = re.sub(r"--security-group-ids .*?(?=( --|$))", str_sgID, self.creation)
 
         resp = cli_handler.raw_cli_res(self.creation)
 
@@ -925,7 +929,8 @@ class EC2INSTANCE(resource):
             cli_handler.raw_cli_res(self.reName)
 
             if self.cmd:
-                self._cmd_handler(cli_handler, name)  # TBD
+                self._add_global_access(cli_handler, sg_id)
+                self._cmd_handler(cli_handler, name)
 
 
     def exec_termination(self, cli_handler):
@@ -933,6 +938,24 @@ class EC2INSTANCE(resource):
             for id in self.ID.values():
                 self.termination = self.termination.replace("self.ID", str(id))
                 cli_handler.raw_cli_res(self.termination)
+
+    def _add_global_access(self, cli_handler, sg_id):
+        #get main route from SG
+        if sg_id:
+            resp1 = cli_handler.raw_cli_res(f"aws ec2 describe-security-groups --group-ids {sg_id}")
+            vpc_id = re.compile(r"VpcId: (.*)").findall(resp1)[0]
+
+            resp2 = cli_handler.raw_cli_res("aws ec2 describe-route-tables")
+            pattern2 = f'(?s)RouteTableId(?:[^R]|R(?!outeTableId))*?VpcId: {vpc_id}'
+            filter = re.compile(pattern2).findall(resp2)[0]
+            rt_id = re.compile(r"RouteTableId: (.*)").findall(filter)[0]
+
+            resp3 = cli_handler.raw_cli_res("aws ec2 describe-internet-gateways")
+            pattern3 = f'(?s)VpcId: {vpc_id}.*?InternetGatewayId: (igw-\w+)'
+            igw_id = re.compile(pattern3).findall(resp3)[0]
+        #add IGW route to main
+            "aws ec2 create-route --route-table-id rtb-0d0cd971e645a6c53 --destination-cidr-block 0.0.0.0/0 --gateway-id igw-0c4bc11847f55f073"
+
 
     def _cmd_handler(self, cli_handler, name):
         import paramiko
@@ -970,7 +993,6 @@ class EC2INSTANCE(resource):
                     print_color(stdout, "green")
 
         elif type(self.cmd).__name__ == "dict":
-            #tbd
             print_color(f"[ERROR][EC2INSTANCE][_cmd_handler]: Unsupport command type:{self.cmd}", "red")
         else:
             print_color(f"[ERROR][EC2INSTANCE][_cmd_handler]: Unknown command type:{self.cmd}", "red")
