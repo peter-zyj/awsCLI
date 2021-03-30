@@ -993,7 +993,7 @@ class EC2INSTANCE(resource):
             print("SSH commanding ........:", self.cmd)
             stdin, stdout, stderr = ssh.exec_command(self.cmd)
             if stderr:
-                print_color(f"[ERROR][EC2INSTANCE][_cmd_handler][command_error]:{self.cmd}->{stderr}", "red")
+                print_color(f"[Warning][EC2INSTANCE][_cmd_handler][command_error]:{self.cmd}->{stderr}", "yellow")
             if stdout:
                 print_color(stdout, "green")
         elif type(self.cmd).__name__ == "list":

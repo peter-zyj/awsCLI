@@ -1042,7 +1042,10 @@ Auto_EC2_Sec(EC2INSTANCE):
     bind_to:
       - Auto_SG_App
       - Auto_SUB_Sec
-    cmd: sudo yum install python3 -y
+    cmd: 
+      - date
+      - sudo yum install python3 -y
+      - hostname
     cleanUP: True
 '''
     obj = aws(setting)
