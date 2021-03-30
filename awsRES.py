@@ -982,7 +982,7 @@ class EC2INSTANCE(resource):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         while True:
-            print("SSH connecting ........")
+            # print("SSH connecting ........")
             try:
                 ssh.connect(publicIP, username='ec2-user', password='', key_filename=keyFile)
                 break
@@ -990,7 +990,6 @@ class EC2INSTANCE(resource):
                 time.sleep(5)
 
         if type(self.cmd).__name__ == "str":
-            print("SSH commanding ........:", self.cmd)
             stdin, stdout, stderr = ssh.exec_command(self.cmd)
             if stderr:
                 print_color(f"[Warning][EC2INSTANCE][_cmd_handler][command_error]:{self.cmd}->{stderr}", "yellow")
