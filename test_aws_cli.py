@@ -1067,8 +1067,8 @@ Auto_EC2_Sec(EC2INSTANCE):
 
 
 @pytest.mark.deploy
-@pytest.mark.tg
-def test_TG():
+@pytest.mark.reg
+def test_REGISTER():
     cont ='''
 Auto_IG_App(INTERNET_GATEWAY):
   action:
@@ -1203,15 +1203,17 @@ Auto_TG_Instance(REGISTER):
     obj.load_deployment(content=cont)
     obj.start_deployment()
 
-    res = obj.raw_cli("aws elbv2 describe-target-groups")
-    assert asso_id in res
+    id = obj.find_id("Auto_EC2_Sec")["Auto_EC2_Sec"]
+    tg_id = obj.find_id("Auto-TG")
+    res = obj.raw_cli(f"aws elbv2 describe-target-health --target-group-arn {tg_id}")
+    assert id in res
 
     obj.close()
 
     obj2 = aws(setting)
     atexit.register(obj2.close)
-    res2 = obj2.raw_cli("aws elbv2 describe-target-groups")
-    assert asso_id not in res2
+    res2 = obj2.raw_cli(f"aws elbv2 describe-target-groups")
+    assert "Auto-TG" not in res2
 
 @pytest.mark.deploy
 @pytest.mark.ec22
