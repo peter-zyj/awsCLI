@@ -1190,7 +1190,7 @@ Auto_EC2_Sec(EC2INSTANCE):
     cleanUP: True
 Auto_TG_Instance(REGISTER):
   target-group-arn: Auto-TG
-  targets: Auto_EC2_Sec
+  targets: Id=Auto_EC2_Sec
   action:
     bind_to:
       - Auto-TG

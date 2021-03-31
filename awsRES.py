@@ -835,11 +835,11 @@ class REGISTER(resource):
                 if type(res_obj).__name__ == "EC2INSTANCE":
                     if not tg_type:
                         tmp_obj = cli_handler.res_deployment[self.raw_yaml["target-group-arn"]]
-                        tg_type = res_obj.tg_type
+                        tg_type = tmp_obj.tg_type
                     ec2inst_id = cli_handler.find_id(res)
-                    ec2inst_ip = self._fetchPrivateIP(cli_handler, ec2inst_id)
+                    ec2inst_ip = self._fetchPrivateIP(cli_handler, ec2inst_id[res])
                     if tg_type == "instance":
-                        self.creation = self.creation.replace(res,ec2inst_id)
+                        self.creation = self.creation.replace(res,ec2inst_id[res])
                     elif tg_type == "ip":
                         self.creation = self.creation.replace(res, ec2inst_ip)
 
@@ -847,8 +847,8 @@ class REGISTER(resource):
                     if not tg_type:
                         tg_type = res_obj.tg_type
                     tg_id = cli_handler.find_id(res)
-                    str_tgID = f"target-group-arn={tg_id}"
-                    self.creation = re.sub(r"target-group-arn=.*?(?=(,| --|$))", str_tgID, self.creation)
+                    str_tgID = f"--target-group-arn {tg_id}"
+                    self.creation = re.sub(r"--target-group-arn .*?(?=(,| --|$))", str_tgID, self.creation)
 
         resp = cli_handler.raw_cli_res(self.creation)
         self.ID = None
