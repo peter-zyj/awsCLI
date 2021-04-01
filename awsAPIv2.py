@@ -4,8 +4,9 @@ import shutil, atexit
 import subprocess
 import yaml
 
-from awsRES import *
+from awsRESv2 import *
 
+#version 2: add command cli recording
 def print_color(message, color="black", style="{}", newLine=True):
     COLORS = {
         "black": "\x1b[30m",
@@ -53,6 +54,10 @@ class aws(object):
         self.resCleanUp = debug
         self.cfgCleanUp = False
         self.term_seq = []
+        self.close_toggle = False
+
+        t_time = datetime.datetime.now()
+        self.cliLog = "aws_cli_" + t_time.strftime("%H-%M-%S_%d-%m-%Y ")
 
         atexit.register(self.close)
 
@@ -74,12 +79,15 @@ class aws(object):
     def close(self):
         self._res_clean()
         self._config_restore()
+        self.close_toggle = True
 
     def __exit__(self):
-        self.close()
+        if not self.close_toggle:
+            self.close()
 
     def __del__(self):
-        self.close()
+        if not self.close_toggle:
+            self.close()
 
     def _config_backup(self):
         path_config = self.home + "/.aws/config"
@@ -206,7 +214,11 @@ class aws(object):
             res = os.popen(f"cat {self.home}/.aws/credentials").read()
             print(res)
 
-    def raw_cli_res(self, commandline, show=True):
+    def raw_cli_res(self, commandline, show=True, exec=True):
+
+        self.record_cli(commandline)
+        if not exec:
+            return
 
         if show:
             print_color(self.prompt, "black", newLine=False)
@@ -311,6 +323,15 @@ class aws(object):
         else:
             print_color(yaml.dump(self.tobeCleanUp), "magenta")
 
+    def record_cli(self, cmd): #Yijun
+        try:
+            with open(self.cliLog, "a") as file:
+                cli = cmd + "\n"
+                file.write(cli)
+        except Exception as e:
+            print(e)
+            traceback.print_exc(file=sys.stdout)
+
     def res_record(self, fileName=None):
         if not fileName:
             t_time = datetime.datetime.now()
@@ -368,6 +389,14 @@ class aws(object):
 
 
     def start_deployment(self):
+        try:
+            with open(self.cliLog, "w+") as file:
+                heading = "~~~~~~~~~~~~~~~~~~~ CREATION ~~~~~~~~~~~~~~~~~~~~\n"
+                file.write(heading)
+        except Exception as e:
+            print(e)
+            traceback.print_exc(file=sys.stdout)
+
         for res in self._creation_sort(self.res_deployment):
             self.term_seq.append(res)
             self.res_deployment[res].exec_creation(self)
@@ -379,6 +408,14 @@ class aws(object):
             return self.res_deployment[name].get_id()
 
     def _res_clean(self):
+        try:
+            with open(self.cliLog, "a") as file:
+                heading = "~~~~~~~~~~~~~~~~~~~ TERMINATION ~~~~~~~~~~~~~~~~~~~~\n"
+                file.write(heading)
+        except Exception as e:
+            print(e)
+            traceback.print_exc(file=sys.stdout)
+
         if any(self.res_deployment.values()):
             for name in self._termination_sort():
                 res = self.res_deployment[name]
@@ -421,43 +458,6 @@ class aws(object):
                     sys.exit(1)
 
 
-
-
-        # for instance in self.res_yaml:
-        #     num = self.res_yaml[instance]["count"]
-        #
-        #     if not num:
-        #         continue
-        #
-        #     istName, type = re.compile(r'(.*?)\((.*?)\)').findall(instance)[0]
-        #
-        #     if type.lower() == "ec2":
-        #
-        #         cmd1 = "aws ec2 run-instances "
-        #         for key,value in self.res_yaml[instance].items():
-        #             if key == "action":
-        #                 continue
-        #             cmd1 += "--" + key + " " + str(value) + " "
-        #
-        #         res1 = self.raw_cli(cmd1)
-        #         pattern = r'InstanceId:(.*)'
-        #         result = re.compile(pattern).findall(res1)
-        #         if len(result) != num:
-        #             print_color("[ERROR][start_deployment]: Unmatched instances number between expected and real world", "red")
-        #             return
-        #
-        #         for idx in range(num):
-        #             if num > 1:
-        #                 name = f"{istName}_{idx}"
-        #             else:
-        #                 name = istName
-        #             cmd2 = f"aws ec2 create-tags --tag 'Key=Name,Value={name}' --resources {result[idx].strip()}"
-        #             res2 = self.raw_cli(cmd2)
-        #             self.res_mapping[name] = result[idx].strip()
-
-
-
-
 if __name__ == "__main__":
     setting = {}
     # cfg = {"default": {"region": "shanghai", "output": "json"}}
@@ -473,9 +473,12 @@ if __name__ == "__main__":
     obj = aws(setting)
     atexit.register(obj.close)
 
-    res = obj.load_deployment("aws_cli_v2.config")
+    res = obj.load_deployment("aws_tb.config")
     obj.start_deployment()
 
+    print_color("~~~~~~~~~~~~~~~ Ready to Rock ~~~~~~~~~~~~~~", "pink")
+    time.sleep(600)
+    obj.close()
 
 '''
 internet gateway:

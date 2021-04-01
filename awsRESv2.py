@@ -6,7 +6,7 @@ import yaml
 
 from awsAPI import aws, print_color
 
-
+#version 2: backup all termination/creation cli
 class resource(object):
     def __init__(self):
         self.creation_dependency = None
@@ -88,9 +88,12 @@ class INTERNET_GATEWAY(resource):
             cli_handler.raw_cli_res(self.reName)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive and self.ID:
+        if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            cli_handler.raw_cli_res(self.termination)
+            if not self.keepAlive:
+                cli_handler.raw_cli_res(self.termination)
+            else:
+                cli_handler.raw_cli_res(self.termination, exec=False)
 
 
 class VPC(resource):
@@ -147,10 +150,11 @@ class VPC(resource):
                     self.attach = re.sub(r"self.ID", self.ID, self.attach)
                     igw_id = cli_handler.find_id(igw)
                     self.attach = re.sub(r"\{.*?\}", igw_id, self.attach)
+
             cli_handler.raw_cli_res(self.attach)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive and self.ID:
+        if self.ID:
 
             if self.detach and self.creation_dependency:
                 for igw in self.creation_dependency:
@@ -159,10 +163,17 @@ class VPC(resource):
                         self.detach = re.sub(r"self.ID", self.ID, self.detach)
                         igw_id = cli_handler.find_id(igw)
                         self.detach = re.sub(r"\{.*?\}", igw_id, self.detach)
-                cli_handler.raw_cli_res(self.detach)
+
+                if not self.keepAlive:
+                    cli_handler.raw_cli_res(self.detach)
+                else:
+                    cli_handler.raw_cli_res(self.detach, exec=False)
 
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            cli_handler.raw_cli_res(self.termination)
+            if not self.keepAlive:
+                cli_handler.raw_cli_res(self.termination)
+            else:
+                cli_handler.raw_cli_res(self.termination, exec=False)
 
 
 class SECURITY_GROUP(resource):
@@ -228,9 +239,12 @@ class SECURITY_GROUP(resource):
             cli_handler.raw_cli_res(rule)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive and self.ID:
+        if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            cli_handler.raw_cli_res(self.termination)
+            if not self.keepAlive:
+                cli_handler.raw_cli_res(self.termination)
+            else:
+                cli_handler.raw_cli_res(self.termination, exec=False)
 
 
 class SUBNET(resource):
@@ -283,15 +297,17 @@ class SUBNET(resource):
             cli_handler.raw_cli_res(self.reName)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive and self.ID:
+        if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-
-            while True:
-                res = cli_handler.raw_cli_res(self.termination)
-                if "has dependencies and cannot be deleted" in res:
-                    time.sleep(5)
-                else:
-                    break
+            if not self.keepAlive:
+                while True:
+                    res = cli_handler.raw_cli_res(self.termination)
+                    if "has dependencies and cannot be deleted" in res:
+                        time.sleep(5)
+                    else:
+                        break
+            else:
+                res = cli_handler.raw_cli_res(self.termination, exec=False)
 
 
 class GATEWAY_LOAD_BALANCE(resource):
@@ -341,9 +357,12 @@ class GATEWAY_LOAD_BALANCE(resource):
         self.ID = re.compile(r'LoadBalancerArn: (.*)').findall(res)[0].strip()
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive and self.ID:
+        if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            cli_handler.raw_cli_res(self.termination)
+            if not self.keepAlive:
+                cli_handler.raw_cli_res(self.termination)
+            else:
+                cli_handler.raw_cli_res(self.termination, exec=False)
 
 
 class TARGET_GROUP(resource):
@@ -393,9 +412,12 @@ class TARGET_GROUP(resource):
         self.tg_type = re.compile(r'TargetType: (.*)').findall(res)[0].strip()
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive and self.ID:
+        if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            cli_handler.raw_cli_res(self.termination)
+            if not self.keepAlive:
+                cli_handler.raw_cli_res(self.termination)
+            else:
+                cli_handler.raw_cli_res(self.termination, exec=False)
 
 
 class LISTENER(resource):
@@ -446,9 +468,12 @@ class LISTENER(resource):
         self.ID = re.compile(r'ListenerArn: (.*)').findall(res)[0].strip()
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive and self.ID:
+        if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            cli_handler.raw_cli_res(self.termination)
+            if not self.keepAlive:
+                cli_handler.raw_cli_res(self.termination)
+            else:
+                cli_handler.raw_cli_res(self.termination, exec=False)
 
 
 class VPCE_SERVICE(resource):
@@ -511,9 +536,12 @@ class VPCE_SERVICE(resource):
             cli_handler.raw_cli_res(self.reName)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive and self.ID:
+        if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            cli_handler.raw_cli_res(self.termination)
+            if not self.keepAlive:
+                cli_handler.raw_cli_res(self.termination)
+            else:
+                cli_handler.raw_cli_res(self.termination, exec=False)
 
 
 class GATEWAY_LOAD_BALANCE_ENDPOINT(resource):
@@ -580,9 +608,12 @@ class GATEWAY_LOAD_BALANCE_ENDPOINT(resource):
             cli_handler.raw_cli_res(self.reName)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive and self.ID:
+        if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            cli_handler.raw_cli_res(self.termination)
+            if not self.keepAlive:
+                cli_handler.raw_cli_res(self.termination)
+            else:
+                cli_handler.raw_cli_res(self.termination, exec=False)
 
 
 class ROUTE(resource):
@@ -655,13 +686,16 @@ class ROUTE(resource):
                 break
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive and self.rtb_id:
+        if self.rtb_id:
             self.termination = self.termination.replace("self.rtb_id", str(self.rtb_id))
-            cli_handler.raw_cli_res(self.termination)
+            if not self.keepAlive:
+                cli_handler.raw_cli_res(self.termination)
+            else:
+                cli_handler.raw_cli_res(self.termination, exec=False)
 
     def _map_vps_route_id(self, cli_handler, vpc_id):
         try:
-            res = cli_handler.raw_cli_res("aws ec2 describe-route-tables")
+            res = cli_handler.raw_cli_res("aws ec2 describe-route-tables", show=False)
             pattern = f'(?s)RouteTableId(?:[^R]|R(?!outeTableId))*?VpcId: {vpc_id}'
             filter = re.compile(pattern).findall(res)[0]
             return re.compile(r"RouteTableId: (.*)").findall(filter)[0]
@@ -736,9 +770,12 @@ class ROUTE_TABLE(resource):
             rt.exec_creation(cli_handler)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive and self.ID:
+        if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            cli_handler.raw_cli_res(self.termination)
+            if not self.keepAlive:
+                cli_handler.raw_cli_res(self.termination)
+            else:
+                cli_handler.raw_cli_res(self.termination, exec=False)
 
 
 class ROUTE_ASSOCIATE(resource):
@@ -790,9 +827,12 @@ class ROUTE_ASSOCIATE(resource):
         self.ID = re.compile(r'AssociationId: (.*)').findall(resp)[0].strip()
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive and self.ID:
+        if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            cli_handler.raw_cli_res(self.termination)
+            if not self.keepAlive:
+                cli_handler.raw_cli_res(self.termination)
+            else:
+                cli_handler.raw_cli_res(self.termination, exec=False)
 
 
 class REGISTER(resource):
@@ -857,9 +897,11 @@ class REGISTER(resource):
     def exec_termination(self, cli_handler):
         if not self.keepAlive:
             cli_handler.raw_cli_res(self.termination)
+        else:
+            cli_handler.raw_cli_res(self.termination, exec=False)
 
     def _fetchPrivateIP(self, cli_handler, id):
-        resp = cli_handler.raw_cli_res(f"aws ec2 describe-instances --instance-ids {id}")
+        resp = cli_handler.raw_cli_res(f"aws ec2 describe-instances --instance-ids {id}", show=False)
         pattern = r'PrivateIpAddress: (.*)'
         return re.compile(pattern).findall(resp)[0].strip()
 
@@ -954,25 +996,31 @@ class EC2INSTANCE(resource):
                 self._cmd_handler(cli_handler, name)
 
     def exec_termination(self, cli_handler):
-        if not self.keepAlive and self.ID:
+        if self.ID:
             if self.mainRT_disable:
-                cli_handler.raw_cli_res(self.mainRT_disable)
+                if not self.keepAlive:
+                    cli_handler.raw_cli_res(self.mainRT_disable)
+                else:
+                    cli_handler.raw_cli_res(self.mainRT_disable, exec=False)
             for id in self.ID.values():
                 termination = self.termination.replace("self.ID", str(id))
-                cli_handler.raw_cli_res(termination)
+                if not self.keepAlive:
+                    cli_handler.raw_cli_res(termination)
+                else:
+                    cli_handler.raw_cli_res(termination, exec=False)
 
     def _add_global_access(self, cli_handler, sg_id):
         # get main route from SG
         if sg_id:
-            resp1 = cli_handler.raw_cli_res(f"aws ec2 describe-security-groups --group-ids {sg_id}")
+            resp1 = cli_handler.raw_cli_res(f"aws ec2 describe-security-groups --group-ids {sg_id}", show=False)
             vpc_id = re.compile(r"VpcId: (.*)").findall(resp1)[0]
 
-            resp2 = cli_handler.raw_cli_res("aws ec2 describe-route-tables")
+            resp2 = cli_handler.raw_cli_res("aws ec2 describe-route-tables", show=False)
             pattern2 = f'(?s)RouteTableId(?:[^R]|R(?!outeTableId))*?VpcId: {vpc_id}'
             filter = re.compile(pattern2).findall(resp2)[0]
             rt_id = re.compile(r"RouteTableId: (.*)").findall(filter)[0]
 
-            resp3 = cli_handler.raw_cli_res("aws ec2 describe-internet-gateways")
+            resp3 = cli_handler.raw_cli_res("aws ec2 describe-internet-gateways", show=False)
             pattern3 = f'(?s)VpcId: {vpc_id}.*?InternetGatewayId: (igw-\w+)'
             igw_id = re.compile(pattern3).findall(resp3)[0]
             # add IGW route to main
@@ -990,7 +1038,7 @@ class EC2INSTANCE(resource):
             print_color("[ERROR][EC2INSTANCE][_cmd_handler]: Key file not exist in working dir:" + os.getcwd(), "red")
             return
 
-        resp = cli_handler.raw_cli_res(f"aws ec2 describe-instances --instance-ids {self.ID[name]}")
+        resp = cli_handler.raw_cli_res(f"aws ec2 describe-instances --instance-ids {self.ID[name]}", show=False)
         try:
             publicIP = re.compile(r"PublicIpAddress: (.*)").findall(resp)[0].strip()
         except IndexError:
@@ -1009,7 +1057,7 @@ class EC2INSTANCE(resource):
         if type(self.cmd).__name__ == "str":
             stdin, stdout, stderr = ssh.exec_command(self.cmd)
             if stderr:
-                print_color(f"[Warning][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd}=>{stderr}", "yellow")
+                print_color(f"[Warning][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd} => {stderr}", "red")
             if stdout:
                 print_color(stdout, "green")
             del stdin, stdout, stderr
@@ -1017,7 +1065,7 @@ class EC2INSTANCE(resource):
             for cmd in self.cmd:
                 stdin, stdout, stderr = ssh.exec_command(cmd)
                 if stderr:
-                    print_color(f"[ERROR][EC2INSTANCE][_cmd_handler][{name}]:{cmd}=>{stderr}", "red")
+                    print_color(f"[Warning][EC2INSTANCE][_cmd_handler][{name}]:{cmd} => {stderr}", "red")
                 if stdout:
                     print_color(stdout, "green")
                 del stdin, stdout, stderr
