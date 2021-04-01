@@ -543,4 +543,18 @@ aws ec2 describe-route-tables
 
 aws ec2 delete-route --route-table-id rtb-0d0cd971e645a6c53 --destination-cidr-block 0.0.0.0/0
 
+data-net
+sg:
+aws ec2 authorize-security-group-ingress --group-id sg-0171ce9bff523588d --protocol all --port all --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-egress --group-id sg-0171ce9bff523588d --protocol all --port all --cidr 0.0.0.0/0
+
+ni
+aws ec2 create-network-interface --subnet-id subnet-059231d15fe253b55 --description "Yijun-data-if" --groups sg-0171ce9bff523588d
+aws ec2 create-tags --tag 'Key=Name,Value=Yijun-data-if0' --resources eni-06f303ecf53737d98
+
+aws ec2 attach-network-interface --network-interface-id eni-06f303ecf53737d98 --instance-id i-1234567890abcdef0 --device-index 1
+aws ec2 detach-network-interface --attachment-id eni-attach-66c4350a
+
+aws ec2 delete-network-interface --network-interface-id eni-06f303ecf53737d98
+
 '''

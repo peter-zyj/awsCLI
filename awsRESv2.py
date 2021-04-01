@@ -216,6 +216,12 @@ class SECURITY_GROUP(resource):
                     for key2, value2 in rule.items():
                         cmd += " --" + key2 + " " + str(value2)
                     self.rules.append(cmd)
+            elif key == "authorize-security-group-egress":
+                for rule in value:
+                    cmd = "aws ec2 authorize-security-group-egress --group-id self.ID"
+                    for key3, value3 in rule.items():
+                        cmd += " --" + key3 + " " + str(value3)
+                    self.rules.append(cmd)
             elif key == "cleanUP":
                 self.keepAlive = False if str(value).lower() == "true" else True
 
@@ -600,7 +606,12 @@ class GATEWAY_LOAD_BALANCE_ENDPOINT(resource):
             if str_subID != "--subnet-ids":
                 self.creation = re.sub(r"--subnet-ids .*?(?=( --|$))", str_subID, self.creation)
 
-        res = cli_handler.raw_cli_res(self.creation)
+        while True:
+            res = cli_handler.raw_cli_res(self.creation)
+            if "InvalidParameter" in res:
+                time.sleep(5)
+            else:
+                break
         self.ID = re.compile(r'VpcEndpointId: (.*)').findall(res)[0].strip()
 
         if self.name:
@@ -822,6 +833,10 @@ class ROUTE_ASSOCIATE(resource):
                     rt_id = cli_handler.find_id(res)
                     str_rtID = f"--route-table-id {rt_id}"
                     self.creation = re.sub(r"--route-table-id .*?(?=( --|$))", str_rtID, self.creation)
+                elif type(res_obj).__name__ == "INTERNET_GATEWAY":
+                    ig_id = cli_handler.find_id(res)
+                    str_igID = f"--gateway-id {ig_id}"
+                    self.creation = re.sub(r"--gateway-id .*?(?=( --|$))", str_igID, self.creation)
 
         resp = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'AssociationId: (.*)').findall(resp)[0].strip()
@@ -890,7 +905,13 @@ class REGISTER(resource):
                     str_tgID = f"--target-group-arn {tg_id}"
                     self.creation = re.sub(r"--target-group-arn .*?(?=(,| --|$))", str_tgID, self.creation)
 
-        resp = cli_handler.raw_cli_res(self.creation)
+        while True:
+            resp = cli_handler.raw_cli_res(self.creation)
+            if "InvalidTarget" in resp:
+                time.sleep(5)
+            else:
+                break
+
         self.ID = None
         self.termination = self.creation.replace("register-targets", "deregister-targets")
 
