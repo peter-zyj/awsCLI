@@ -1070,9 +1070,10 @@ class EC2INSTANCE(resource):
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         while True:
             try:
-                ssh.connect(publicIP, username='ec2-user', password='', key_filename=keyFile)
+                ssh.connect(publicIP, username='ubuntu', password='', key_filename=keyFile)
                 break
-            except:
+            except Exception as e:
+                print_color(f"[ERROR][EC2INSTANCE][_cmd_handler][SSH]:{e}", "red")
                 time.sleep(5)
 
         if type(self.cmd).__name__ == "str":
@@ -1153,7 +1154,12 @@ class NETWORK_INTERFACE(resource):
             if str_sgID != "--groups":
                 self.creation = re.sub(r"--groups .*?(?=( --|$))", str_sgID, self.creation)
 
-        resp = cli_handler.raw_cli_res(self.creation)
+        while True:
+            resp = cli_handler.raw_cli_res(self.creation)
+            if "An error occurred" in resp:
+                time.sleep(5)
+            else:
+                break
         self.ID = re.compile(r'NetworkInterfaceId: (.*)').findall(resp)[0].strip()
 
         if self.name:

@@ -486,7 +486,7 @@ if __name__ == "__main__":
     obj.start_deployment()
 
     print_color("~~~~~~~~~~~~~~~ Ready to Rock ~~~~~~~~~~~~~~", "pink")
-    # time.sleep(600)
+    time.sleep(3600)
     obj.close()
 
 '''

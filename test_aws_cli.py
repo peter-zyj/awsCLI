@@ -1103,7 +1103,7 @@ Debug_SUB_Sec(SUBNET):
     bind_to: Debug_VPC_App
     cleanUP: True
 Debug_EC2_Sec(EC2INSTANCE):
-  image-id: ami-03d64741867e7bb94
+  image-id: ami-08962a4068733a2b6
   instance-type: t2.micro
   key-name: testMonkey
   security-group-ids: Debug_SG_App
@@ -1115,9 +1115,9 @@ Debug_EC2_Sec(EC2INSTANCE):
       - Debug_SG_App
       - Debug_SUB_Sec
     cmd: 
-      - date
-      - sudo yum install python3 -y
-      - hostname
+      - sudo git clone https://github.com/sentialabs/geneve-proxy.git
+      - sudo cd geneve-proxy
+      - sudo script "sudo screen;sudo python3 main.py&;pwd;killall script;" /dev/null
     cleanUP: True
 Debug_NWInterface_Sec(NETWORK_INTERFACE):
   subnet-id: Debug_SUB_Sec
@@ -1145,8 +1145,10 @@ Debug_NWInterface_Sec_Bind(BIND):
     obj.load_deployment(content=cont)
     obj.start_deployment()
     res = obj.raw_cli("aws ec2 describe-network-interfaces",show=False)
-    assert "Debug_NWInterface_Sec" in res
 
+    print("Debug start ~~~~~~~~~~~~~~")
+    time.sleep(1200)
+    assert "Debug_NWInterface_Sec" in res
     obj.close()
 
     obj2 = aws(setting)
