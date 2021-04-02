@@ -473,6 +473,15 @@ if __name__ == "__main__":
     obj = aws(setting)
     atexit.register(obj.close)
 
+    import signal
+    def signal_handler(signal, frame):
+        print('Someone pressed Ctrl+C!')
+        if obj:
+            obj.close()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+
     res = obj.load_deployment("aws_tb.config")
     obj.start_deployment()
 

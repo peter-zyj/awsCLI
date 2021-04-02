@@ -1099,6 +1099,139 @@ class EC2INSTANCE(resource):
         ssh.close()
         del ssh
 
+class NETWORK_INTERFACE(resource):
+    def __init__(self, tagName, content):
+        super().__init__()
+        self.name = tagName
+        self.raw_yaml = content
+        self.creation = "aws ec2 create-network-interface"
+        self.termination = "aws ec2 delete-network-interface"
+        self.ID = None
+        self.reName = "aws ec2 create-tags"
+        self._cmd_composition()
+
+    def _cmd_composition(self):
+        for key, value in self.raw_yaml.items():
+            if key != "action":
+                if value and value != "None":
+                    value = '"' + value + '"' if " " in value else value
+                    self.creation += " --" + key + " " + str(value)
+                else:
+                    self.creation += " --" + key
+            else:
+                self._action_handler(value)
+
+        self.termination += " --network-interface-id" + " " + "self.ID"
+
+        if self.name:
+            self.reName += " --tag" + " " + f"Key=Name,Value={self.name}" + " " + "--resources" + " " + "self.ID"
+
+    def _action_handler(self, action_yaml):
+        for key, value in action_yaml.items():
+            if key == "bind_to":
+                if type(value) == str:
+                    self.creation_dependency = [value]
+                else:
+                    self.creation_dependency = value
+            elif key == "cleanUP":
+                self.keepAlive = False if str(value).lower() == "true" else True
+
+    def exec_creation(self, cli_handler):
+        if self.creation_dependency:
+            str_sgID = "--groups"
+            for res in self.creation_dependency:
+                res_obj = cli_handler.res_deployment[res]
+                if type(res_obj).__name__ == "SUBNET":
+                    sub_id = cli_handler.find_id(res)
+                    str_subID = f"--subnet-id {sub_id}"
+                    self.creation = re.sub(r"--subnet-id .*?(?=( --|$))", str_subID, self.creation)
+
+                elif type(res_obj).__name__ == "SECURITY_GROUP":
+                    sg_id = cli_handler.find_id(res)
+                    str_sgID += f" {sg_id}"
+
+            if str_sgID != "--groups":
+                self.creation = re.sub(r"--groups .*?(?=( --|$))", str_sgID, self.creation)
+
+        resp = cli_handler.raw_cli_res(self.creation)
+        self.ID = re.compile(r'NetworkInterfaceId: (.*)').findall(resp)[0].strip()
+
+        if self.name:
+            self.reName = self.reName.replace("self.ID", str(self.ID))
+            cli_handler.raw_cli_res(self.reName)
+
+    def exec_termination(self, cli_handler):
+        if self.ID:
+            self.termination = self.termination.replace("self.ID", str(self.ID))
+
+            if not self.keepAlive:
+                while True:
+                    resp = cli_handler.raw_cli_res(self.termination)
+                    if "An error occurred" in resp:
+                        time.sleep(5)
+                    else:
+                        break
+            else:
+                cli_handler.raw_cli_res(self.termination, exec=False)
+
+
+
+class BIND(resource):
+    def __init__(self, tagName, content):
+        super().__init__()
+        self.name = tagName
+        self.raw_yaml = content
+        self.creation = "aws ec2 attach-network-interface"
+        self.termination = "aws ec2 detach-network-interface"
+        self.ID = None
+        self._cmd_composition()
+
+    def _cmd_composition(self):
+        for key, value in self.raw_yaml.items():
+            if key != "action":
+                if value and value != "None":
+                    self.creation += " --" + key + " " + str(value)
+                else:
+                    self.creation += " --" + key
+            else:
+                self._action_handler(value)
+
+        self.termination += " --attachment-id" + " " + "self.ID"
+
+    def _action_handler(self, action_yaml):
+        for key, value in action_yaml.items():
+            if key == "bind_to":
+                if type(value) == str:
+                    self.creation_dependency = [value]
+                else:
+                    self.creation_dependency = value
+            elif key == "cleanUP":
+                self.keepAlive = False if str(value).lower() == "true" else True
+
+    def exec_creation(self, cli_handler):
+        if self.creation_dependency:
+            for res in self.creation_dependency:
+                res_obj = cli_handler.res_deployment[res]
+                if type(res_obj).__name__ == "NETWORK_INTERFACE":
+                    nwi_id = cli_handler.find_id(res)
+                    str_nwiID = f"--network-interface-id {nwi_id}"
+                    self.creation = re.sub(r"--network-interface-id .*?(?=( --|$))", str_nwiID, self.creation)
+
+                elif type(res_obj).__name__ == "EC2INSTANCE":
+                    ist_id = cli_handler.find_id(res)
+                    str_istID = f"--instance-id {ist_id[res]}"
+                    self.creation = re.sub(r"--instance-id .*?(?=( --|$))", str_istID, self.creation)
+
+        resp = cli_handler.raw_cli_res(self.creation)
+        self.ID = re.compile(r'AttachmentId: (.*)').findall(resp)[0].strip()
+
+    def exec_termination(self, cli_handler):
+        if self.ID:
+            self.termination = self.termination.replace("self.ID", str(self.ID))
+            if not self.keepAlive:
+                cli_handler.raw_cli_res(self.termination)
+            else:
+                cli_handler.raw_cli_res(self.termination, exec=False)
 
 if __name__ == "__main__":
     import paramiko

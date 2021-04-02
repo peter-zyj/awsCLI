@@ -1065,6 +1065,94 @@ Auto_EC2_Sec(EC2INSTANCE):
     assert "Auto_EC2_Sec" in res2
     assert "terminated" in res2
 
+@pytest.mark.deploy
+@pytest.mark.data
+def test_EC2INSTANCE_DATA():
+    cont ='''
+Debug_IG_App(INTERNET_GATEWAY):
+  action:
+    cleanUP: True
+Debug_VPC_App(VPC):
+  cidr-block: 10.0.0.0/16
+  action:
+    bind_to: Debug_IG_App
+    cleanUP: True
+Debug_SG_App(SECURITY_GROUP):
+  vpc-id: Debug_VPC_App
+  description: My security group
+  action:
+    authorize-security-group-ingress:
+      - protocol: tcp
+        port: 22
+        cidr: 0.0.0.0/0
+      - protocol: tcp
+        port: 80
+        cidr: 0.0.0.0/0
+      - protocol: icmp
+        port: all
+        cidr: 0.0.0.0/0
+      - protocol: udp
+        port: 6081
+        cidr: 0.0.0.0/0
+    bind_to: Debug_VPC_App
+    cleanUP: True
+Debug_SUB_Sec(SUBNET):
+  vpc-id: Debug_VPC_App
+  cidr-block: 10.0.1.0/24
+  action:
+    bind_to: Debug_VPC_App
+    cleanUP: True
+Debug_EC2_Sec(EC2INSTANCE):
+  image-id: ami-03d64741867e7bb94
+  instance-type: t2.micro
+  key-name: testMonkey
+  security-group-ids: Debug_SG_App
+  count: 1
+  subnet-id: Debug_SUB_Sec
+  associate-public-ip-address: None
+  action:
+    bind_to:
+      - Debug_SG_App
+      - Debug_SUB_Sec
+    cmd: 
+      - date
+      - sudo yum install python3 -y
+      - hostname
+    cleanUP: True
+Debug_NWInterface_Sec(NETWORK_INTERFACE):
+  subnet-id: Debug_SUB_Sec
+  description: Debug Data Network for Security
+  groups: Debug_SG_App
+  action:
+    bind_to: 
+      - Debug_SG_App
+      - Debug_SUB_Sec
+    cleanUP: True
+Debug_NWInterface_Sec_Bind(BIND):
+  network-interface-id: Debug_NWInterface_Sec
+  instance-id: Debug_EC2_Sec
+  device-index: 1
+  action:
+    bind_to: 
+      - Debug_NWInterface_Sec
+      - Debug_EC2_Sec
+    cleanUP: True    
+
+'''
+    obj = aws(setting)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+    res = obj.raw_cli("aws ec2 describe-network-interfaces",show=False)
+    assert "Debug_NWInterface_Sec" in res
+
+    obj.close()
+
+    obj2 = aws(setting)
+    atexit.register(obj2.close)
+    res2 = obj2.raw_cli("aws ec2 describe-network-interfaces",show=False)
+    assert "Debug_NWInterface_Sec" not in res2
 
 @pytest.mark.deploy
 @pytest.mark.reg
