@@ -892,11 +892,12 @@ class REGISTER(resource):
                         tmp_obj = cli_handler.res_deployment[self.raw_yaml["target-group-arn"]]
                         tg_type = tmp_obj.tg_type
                     ec2inst_id = cli_handler.find_id(res)
-                    ec2inst_ip = self._fetchPrivateIP(cli_handler, ec2inst_id[res])
-                    if tg_type == "instance":
-                        self.creation = self.creation.replace(res,ec2inst_id[res])
-                    elif tg_type == "ip":
-                        self.creation = self.creation.replace(res, ec2inst_ip)
+                    for name, id in ec2inst_id.items():
+                        ec2inst_ip = self._fetchPrivateIP(cli_handler, id)
+                        if tg_type == "instance":
+                            self.creation = self.creation.replace(name,id)
+                        elif tg_type == "ip":
+                            self.creation = self.creation.replace(name, ec2inst_ip)
 
                 elif type(res_obj).__name__ == "TARGET_GROUP":
                     if not tg_type:
@@ -1225,8 +1226,10 @@ class BIND(resource):
 
                 elif type(res_obj).__name__ == "EC2INSTANCE":
                     ist_id = cli_handler.find_id(res)
-                    str_istID = f"--instance-id {ist_id[res]}"
-                    self.creation = re.sub(r"--instance-id .*?(?=( --|$))", str_istID, self.creation)
+                    name = self.raw_yaml["instance-id"]
+                    if name in ist_id:
+                        str_istID = f"--instance-id {ist_id[name]}"
+                        self.creation = re.sub(r"--instance-id .*?(?=( --|$))", str_istID, self.creation)
 
         resp = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'AttachmentId: (.*)').findall(resp)[0].strip()
