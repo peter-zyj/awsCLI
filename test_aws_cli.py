@@ -1411,6 +1411,16 @@ Auto_IG_App(INTERNET_GATEWAY):
     res2 = obj2.raw_cli("aws ec2 describe-vpcs")
     assert "Auto_VPC_App" not in res2
 
+@pytest.mark.term
+def test_manual_termination():
+    obj = aws(setting, record=False)
+    atexit.register(obj.close)
+
+    name = "aws_cli_09-12-29_05-04-2021"
+    obj.manual_termination(name)
+
+    obj.close()
+
 #....
 def test_auto_config_CleanUp():
     obj = aws()

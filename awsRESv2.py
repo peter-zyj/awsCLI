@@ -1231,7 +1231,12 @@ class BIND(resource):
                         str_istID = f"--instance-id {ist_id[name]}"
                         self.creation = re.sub(r"--instance-id .*?(?=( --|$))", str_istID, self.creation)
 
-        resp = cli_handler.raw_cli_res(self.creation)
+        while True:
+            resp = cli_handler.raw_cli_res(self.creation)
+            if "An error occurred" in resp:
+                time.sleep(5)
+            else:
+                break
         self.ID = re.compile(r'AttachmentId: (.*)').findall(resp)[0].strip()
 
     def exec_termination(self, cli_handler):

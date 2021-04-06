@@ -41,7 +41,7 @@ def print_color(message, color="black", style="{}", newLine=True):
 
 
 class aws(object):
-    def __init__(self, configuration=None,debug=False):
+    def __init__(self, configuration=None, record=True, debug=False):
         self.config = False
         self.credentials = False
         self.home = os.getenv("HOME")
@@ -55,9 +55,11 @@ class aws(object):
         self.cfgCleanUp = False
         self.term_seq = []
         self.close_toggle = False
+        self.cliLog = None
 
         t_time = datetime.datetime.now()
-        self.cliLog = "aws_cli_" + t_time.strftime("%H-%M-%S_%d-%m-%Y ")
+        if record:
+            self.cliLog = "aws_cli_" + t_time.strftime("%H-%M-%S_%d-%m-%Y")
 
         atexit.register(self.close)
 
@@ -324,13 +326,14 @@ class aws(object):
             print_color(yaml.dump(self.tobeCleanUp), "magenta")
 
     def record_cli(self, cmd): #Yijun
-        try:
-            with open(self.cliLog, "a") as file:
-                cli = cmd + "\n"
-                file.write(cli)
-        except Exception as e:
-            print(e)
-            traceback.print_exc(file=sys.stdout)
+        if self.cliLog:
+            try:
+                with open(self.cliLog, "a") as file:
+                    cli = cmd + "\n"
+                    file.write(cli)
+            except Exception as e:
+                print(e)
+                traceback.print_exc(file=sys.stdout)
 
     def res_record(self, fileName=None):
         if not fileName:
@@ -389,13 +392,14 @@ class aws(object):
 
 
     def start_deployment(self):
-        try:
-            with open(self.cliLog, "w+") as file:
-                heading = "~~~~~~~~~~~~~~~~~~~ CREATION ~~~~~~~~~~~~~~~~~~~~\n"
-                file.write(heading)
-        except Exception as e:
-            print(e)
-            traceback.print_exc(file=sys.stdout)
+        if self.cliLog:
+            try:
+                with open(self.cliLog, "w+") as file:
+                    heading = "~~~~~~~~~~~~~~~~~~~ CREATION ~~~~~~~~~~~~~~~~~~~~\n"
+                    file.write(heading)
+            except Exception as e:
+                print(e)
+                traceback.print_exc(file=sys.stdout)
 
         for res in self._creation_sort(self.res_deployment):
             self.term_seq.append(res)
@@ -408,13 +412,14 @@ class aws(object):
             return self.res_deployment[name].get_id()
 
     def _res_clean(self):
-        try:
-            with open(self.cliLog, "a") as file:
-                heading = "~~~~~~~~~~~~~~~~~~~ TERMINATION ~~~~~~~~~~~~~~~~~~~~\n"
-                file.write(heading)
-        except Exception as e:
-            print(e)
-            traceback.print_exc(file=sys.stdout)
+        if self.cliLog:
+            try:
+                with open(self.cliLog, "a") as file:
+                    heading = "~~~~~~~~~~~~~~~~~~~ TERMINATION ~~~~~~~~~~~~~~~~~~~~\n"
+                    file.write(heading)
+            except Exception as e:
+                print(e)
+                traceback.print_exc(file=sys.stdout)
 
         if any(self.res_deployment.values()):
             for name in self._termination_sort():
@@ -457,6 +462,25 @@ class aws(object):
                     print_color("[Info][awsAPI][_creation_sort]: Quit the Application", "black")
                     sys.exit(1)
 
+    def manual_termination(self, fileName):
+        if not os.path.exists(fileName):
+            print_color(f"[Error][aws][manual_termination]: no such file exist: {fileName}", "red")
+
+        with open(fileName,'r') as f:
+            term_cont = f.read()
+            pattern = "(?s)~ TERMINATION ~.*"
+            cmd_list = re.compile(pattern).findall(term_cont)[0].split("\n")
+
+            for cmd in cmd_list:
+                if "~ TERMINATION ~" not in cmd:
+                    cmd = cmd.strip()
+                    while True:
+                        resp = self.raw_cli_res(cmd)
+                        if "error occurred" in resp:
+                            time.sleep(5)
+                        else:
+                            break
+
 
 if __name__ == "__main__":
     setting = {}
@@ -488,131 +512,3 @@ if __name__ == "__main__":
     print_color("~~~~~~~~~~~~~~~ Ready to Rock ~~~~~~~~~~~~~~", "pink")
     time.sleep(3600)
     obj.close()
-
-'''
-internet gateway:
-aws ec2 create-internet-gateway
-aws ec2 create-tags --tag 'Key=Name,Value=Yijun-test' --resources igw-0cef12cfaaa984acf
-
-(VPC attach dependency)
-aws ec2 delete-internet-gateway --internet-gateway-id igw-0cef12cfaaa984acf
-
-
-
-ig creation
-vpc bind IG
-VPC'main route add internet route 0.0.0.0/0
-
-
---region us-east-2
-vpc:
-aws ec2 describe-vpcs
-aws ec2 create-vpc --cidr-block 10.0.0.0/16
-aws ec2 create-tags --tag 'Key=Name,Value=Yijun-1' --resources vpc-04d55cd47598533ce
-aws ec2 delete-vpc --vpc-id vpc-04d55cd47598533ce
-
-bind vpc to IG:
-aws ec2 attach-internet-gateway --vpc-id vpc-09518b536ccd73a17 --internet-gateway-id igw-0cef12cfaaa984acf
-
-security group:
-aws ec2 create-security-group --group-name Yijun-sg --description "My security group" --vpc-id vpc-09518b536ccd73a17
-aws ec2 authorize-security-group-ingress --group-id sg-044bb3e58ed8d8c87 --protocol tcp --port 22 --cidr 0.0.0.0/0
-aws ec2 authorize-security-group-ingress --group-id sg-044bb3e58ed8d8c87 --protocol tcp --port 80 --cidr 0.0.0.0/0
-aws ec2 authorize-security-group-ingress --group-id sg-044bb3e58ed8d8c87 --protocol icmp --port all --cidr 0.0.0.0/0
-aws ec2 authorize-security-group-ingress --group-id sg-044bb3e58ed8d8c87 --protocol udp --port 6081 --cidr 0.0.0.0/0
-aws ec2 delete-security-group --group-id sg-044bb3e58ed8d8c87
-
-subnet:
-aws ec2 describe-subnets
-aws ec2 create-subnet --vpc-id vpc-04d55cd47598533ce --cidr-block 10.0.1.0/24
-aws ec2 create-tags --tag 'Key=Name,Value=Yijun-1-sub1' --resources subnet-0908841c5ec6fbc8b
-aws ec2 delete-subnet --subnet-id subnet-0908841c5ec6fbc8b
-
-gwlb:
-aws elbv2 describe-load-balancers
-aws elbv2 create-load-balancer --name Yijun-gwlb --type gateway --subnets subnet-0ca4dea497eab3968
-aws elbv2 delete-load-balancer 
---load-balancer-arn arn:aws:elasticloadbalancing:us-east-2:439462095416:loadbalancer/gwy/Yijun-gwlb/0c5676485ec64efd
-
-target group:
-aws elbv2 create-target-group --name Yijun-tgt --protocol GENEVE --port 6081 --vpc-id vpc-09518b536ccd73a17
-aws elbv2 delete-target-group --target-group-arn 
-arn:aws:elasticloadbalancing:us-east-2:439462095416:targetgroup/Yijun-tgt/0013b056c4ab337bda
-
-new ec2(subnet bind to VPC):
-aws ec2 run-instances --image-id ami-03d64741867e7bb94 --count 1 --instance-type t2.micro --key-name testMonkey 
---subnet-id subnet-0ca4dea497eab3968 --security-group-ids sg-08bd09e25908f1acd --associate-public-ip-address
-
-sudo yum install python3 -y
-sudo python3 -m http.server 80
-
-# option:when SG not specified in instance creation cli:
-# aws ec2 describe-instance-attribute --instance-id i-036313d57f8d6accc --attribute groupSet
-# aws ec2 authorize-security-group-ingress --group-id sg-7e070b0f --protocol tcp --port 22 --cidr 0.0.0.0/0
-
-
-
-aws elbv2 register-targets --target-group-arn 
-arn:aws:elasticloadbalancing:us-east-2:439462095416:targetgroup/Yijun-tgt/00f81e321e2277b79b 
---targets Id=i-008d61520584c55ba
-
-aws elbv2 deregister-targets --target-group-arn 
-arn:aws:elasticloadbalancing:us-east-2:439462095416:targetgroup/Yijun-tgt/00f81e321e2277b79b 
---targets Id=i-008d61520584c55ba
-
-aws elbv2 describe-target-health 
---target-group-arn arn:aws:elasticloadbalancing:us-east-2:439462095416:targetgroup/Yijun-tgt/00f81e321e2277b79b
-
-listener:
-aws elbv2 create-listener 
---load-balancer-arn arn:aws:elasticloadbalancing:us-east-2:439462095416:loadbalancer/gwy/Yijun-gwlb/6a457831f9919c8f 
---default-actions 
-Type=forward,
-TargetGroupArn=arn:aws:elasticloadbalancing:us-east-2:439462095416:targetgroup/Yijun-tgt/00f81e321e2277b79b
-
-aws elbv2 delete-listener
---listener-arn arn:aws:elasticloadbalancing:us-east-2:439462095416:listener/gwy/Yijun-gwlb/6a457831f9919c8f/3e45c5f8d47d0d7c
-
-
-gwlbe:
-aws ec2 create-vpc-endpoint-service-configuration --gateway-load-balancer-arns 
-arn:aws:elasticloadbalancing:us-east-2:439462095416:loadbalancer/gwy/Yijun-gwlb/6a457831f9919c8f --no-acceptance-required
-
-aws ec2 delete-vpc-endpoint-service-configurations --service-ids vpce-svc-04715feea9278ffb4
-
-aws ec2 create-vpc-endpoint --vpc-endpoint-type GatewayLoadBalancer 
---service-name com.amazonaws.vpce.us-east-2.vpce-svc-0840335b70927cf16 
---vpc-id vpc-09518b536ccd73a17 --subnet-ids subnet-0ca4dea497eab3968
-
-aws ec2 delete-vpc-endpoints --vpc-endpoint-ids vpce-09fcb69ef29c01e5b
-
-routes:
-aws ec2 create-route --route-table-id rtb-0d0cd971e645a6c53 --destination-cidr-block 0.0.0.0/0 --gateway-id igw-0c4bc11847f55f073
-aws ec2 describe-route-tables
-            | => aws ec2 describe-route-tables // input VPCID, output RouteTableId
-            RouteTables:
-            - Associations:
-              - AssociationState:
-                  State: associated
-                Main: true
-                RouteTableAssociationId: rtbassoc-09ed0852b71515d06
-                RouteTableId: rtb-0d0cd971e645a6c53
-              OwnerId: '439462095416'
-              PropagatingVgws: []
-              RouteTableId: rtb-0d0cd971e645a6c53
-              Routes:
-              - DestinationCidrBlock: 10.0.0.0/16
-                GatewayId: local
-                Origin: CreateRouteTable
-                State: active
-              - DestinationCidrBlock: 0.0.0.0/0
-                GatewayId: igw-0c4bc11847f55f073
-                Origin: CreateRoute
-                State: active
-              Tags: []
-              VpcId: vpc-09518b536ccd73a17        
-
-
-aws ec2 delete-route --route-table-id rtb-0d0cd971e645a6c53 --destination-cidr-block 0.0.0.0/0
-
-'''
