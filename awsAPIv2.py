@@ -1,5 +1,5 @@
 import os, sys, traceback
-import re, time, datetime
+import re, time, datetime, inspect
 import shutil, atexit
 import subprocess
 import yaml
@@ -51,8 +51,8 @@ class aws(object):
         self.res_mapping = {}
         self.resource = {}
         self.tobeCleanUp = {}
-        self.resCleanUp = debug
-        self.cfgCleanUp = False
+        self.resCleanUp = not debug #Yijun
+        self.cfgCleanUp = True  #Yijun
         self.term_seq = []
         self.close_toggle = False
         self.cliLog = None
@@ -114,11 +114,11 @@ class aws(object):
         return None
 
     def _config_restore(self):
-        if not self.resCleanUp:
+        if self.resCleanUp:  #Yijun
             self._res_term()
-            self.resCleanUp = True
+            self.resCleanUp = False  #Yijun
 
-        if not self.cfgCleanUp:
+        if self.cfgCleanUp:  #Yijun
             if self.config:
                 path_config_bk = self.home + "/.aws/config" + "_auto_bk"
                 path_config_org = self.home + "/.aws/config"
@@ -143,7 +143,7 @@ class aws(object):
             else:
                 os.remove(self.home + "/.aws/credentials")
 
-            self.cfgCleanUp = True
+            self.cfgCleanUp = False
 
         return
 
@@ -219,8 +219,12 @@ class aws(object):
     def raw_cli_res(self, commandline, show=True, exec=True):
 
         self.record_cli(commandline)
+        if not self.resCleanUp:  #Yijun
+            if "res_clean" in inspect.stack()[2][3]:
+                return ""
+
         if not exec:
-            return
+            return ""
 
         if show:
             print_color(self.prompt, "black", newLine=False)
@@ -331,6 +335,8 @@ class aws(object):
                 with open(self.cliLog, "a") as file:
                     cli = cmd + "\n"
                     file.write(cli)
+            except NameError:
+                pass
             except Exception as e:
                 print(e)
                 traceback.print_exc(file=sys.stdout)
@@ -421,6 +427,7 @@ class aws(object):
                 print(e)
                 traceback.print_exc(file=sys.stdout)
 
+
         if any(self.res_deployment.values()):
             for name in self._termination_sort():
                 res = self.res_deployment[name]
@@ -494,7 +501,7 @@ if __name__ == "__main__":
     setting["config"] = cfg
     setting["credentials"] = cda
 
-    obj = aws(setting)
+    obj = aws(setting, debug=True)
     atexit.register(obj.close)
 
     import signal
@@ -510,5 +517,5 @@ if __name__ == "__main__":
     obj.start_deployment()
 
     print_color("~~~~~~~~~~~~~~~ Ready to Rock ~~~~~~~~~~~~~~", "pink")
-    time.sleep(3600)
+    # time.sleep(3600)
     obj.close()

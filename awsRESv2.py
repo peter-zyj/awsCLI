@@ -290,12 +290,22 @@ class SUBNET(resource):
 
     def exec_creation(self, cli_handler):
         if self.creation_dependency:
-            for vpc in self.creation_dependency:
-                res_obj = cli_handler.res_deployment[vpc]
+            for res in self.creation_dependency:
+                res_obj = cli_handler.res_deployment[res]
                 if type(res_obj).__name__ == "VPC":
-                    vpc_id = cli_handler.find_id(vpc)
+                    vpc_id = cli_handler.find_id(res)
                     str_vpcID = f"--vpc-id {vpc_id}"
                     self.creation = re.sub(r"--vpc-id .*?(?=( --|$))", str_vpcID, self.creation)
+
+                if type(res_obj).__name__ == "SUBNET": #Yijun
+                    sub_id = cli_handler.find_id(res)
+                    cmd = f"aws ec2 describe-subnets --subnet-ids {sub_id}"
+                    resp = cli_handler.raw_cli_res(cmd)
+                    pattern = "AvailabilityZone: (.*)"
+                    zone = re.compile(pattern).findall(resp)[0].strip()
+                    str_zoneID = f"--availability-zone {zone}"
+                    self.creation = re.sub(r"--availability-zone .*?(?=( --|$))", str_zoneID, self.creation)
+
         res = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'SubnetId: (.*)').findall(res)[0].strip()
         if self.name:
