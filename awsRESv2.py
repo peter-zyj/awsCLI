@@ -922,7 +922,7 @@ class REGISTER(resource):
                         tg_type = res_obj.tg_type
                     nw_id = cli_handler.find_id(res)
                     nw_ip = res_obj.get_ip()
-                    self.creation = self.creation.replace(name, nw_ip)
+                    self.creation = self.creation.replace(res, nw_ip)
 
         while True:
             resp = cli_handler.raw_cli_res(self.creation)

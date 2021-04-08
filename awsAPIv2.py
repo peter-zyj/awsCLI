@@ -481,11 +481,16 @@ class aws(object):
             for cmd in cmd_list:
                 if "~ TERMINATION ~" not in cmd:
                     cmd = cmd.strip()
+                    num = 0
                     while True:
                         resp = self.raw_cli_res(cmd)
                         if "error occurred" in resp and "no route with destination-cidr-block 0.0.0.0/0" not in resp:
                             time.sleep(5)
+                            num += 1
                         else:
+                            break
+
+                        if num >= 10:
                             break
 
 
