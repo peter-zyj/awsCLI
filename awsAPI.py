@@ -557,4 +557,7 @@ aws ec2 detach-network-interface --attachment-id eni-attach-66c4350a
 
 aws ec2 delete-network-interface --network-interface-id eni-06f303ecf53737d98
 
+
+aws ec2 run-instances --image-id ami-03dda840f4c3d816e --instance-type c5.xlarge --key-name testMonkey --count 1 \
+ --subnet-id Yijun-mgm-subnet --security-group-ids allow-all --user-data file://day0.txt
 '''

@@ -903,11 +903,12 @@ class REGISTER(resource):
                         tg_type = tmp_obj.tg_type
                     ec2inst_id = cli_handler.find_id(res)
                     for name, id in ec2inst_id.items():
-                        ec2inst_ip = self._fetchPrivateIP(cli_handler, id)
-                        if tg_type == "instance":
-                            self.creation = self.creation.replace(name,id)
-                        elif tg_type == "ip":
-                            self.creation = self.creation.replace(name, ec2inst_ip)
+                        if name in self.creation:
+                            ec2inst_ip = self._fetchPrivateIP(cli_handler, id)
+                            if tg_type == "instance":
+                                self.creation = self.creation.replace(name, id)
+                            elif tg_type == "ip":
+                                self.creation = self.creation.replace(name, ec2inst_ip)
 
                 elif type(res_obj).__name__ == "TARGET_GROUP":
                     if not tg_type:
@@ -915,6 +916,13 @@ class REGISTER(resource):
                     tg_id = cli_handler.find_id(res)
                     str_tgID = f"--target-group-arn {tg_id}"
                     self.creation = re.sub(r"--target-group-arn .*?(?=(,| --|$))", str_tgID, self.creation)
+
+                elif type(res_obj).__name__ == "NETWORK_INTERFACE":
+                    if not tg_type:
+                        tg_type = res_obj.tg_type
+                    nw_id = cli_handler.find_id(res)
+                    nw_ip = res_obj.get_ip()
+                    self.creation = self.creation.replace(name, nw_ip)
 
         while True:
             resp = cli_handler.raw_cli_res(self.creation)
@@ -1119,6 +1127,7 @@ class NETWORK_INTERFACE(resource):
         self.creation = "aws ec2 create-network-interface"
         self.termination = "aws ec2 delete-network-interface"
         self.ID = None
+        self.IP = None
         self.reName = "aws ec2 create-tags"
         self._cmd_composition()
 
@@ -1172,6 +1181,7 @@ class NETWORK_INTERFACE(resource):
             else:
                 break
         self.ID = re.compile(r'NetworkInterfaceId: (.*)').findall(resp)[0].strip()
+        self.IP = re.compile(r'PrivateIpAddress: (.*)').findall(resp)[0].strip()
 
         if self.name:
             self.reName = self.reName.replace("self.ID", str(self.ID))
@@ -1191,6 +1201,8 @@ class NETWORK_INTERFACE(resource):
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
 
+    def get_ip(self):
+        return self.IP
 
 
 class BIND(resource):

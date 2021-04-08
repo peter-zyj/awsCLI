@@ -483,7 +483,7 @@ class aws(object):
                     cmd = cmd.strip()
                     while True:
                         resp = self.raw_cli_res(cmd)
-                        if "error occurred" in resp:
+                        if "error occurred" in resp and "no route with destination-cidr-block 0.0.0.0/0" not in resp:
                             time.sleep(5)
                         else:
                             break
