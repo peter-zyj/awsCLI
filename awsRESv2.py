@@ -908,7 +908,10 @@ class REGISTER(resource):
                             if tg_type == "instance":
                                 self.creation = self.creation.replace(name, id)
                             elif tg_type == "ip":
-                                self.creation = self.creation.replace(name, ec2inst_ip)
+                                temp_replace_str = f"Id={ec2inst_ip} "
+                                pattern = f"Id={name}( |$)" # Yijun:python: [$] == \$
+                                # self.creation = self.creation.replace(temp_be_replaced_str, temp_replace_str)
+                                self.creation = re.sub(pattern,temp_replace_str,self.creation).strip()
 
                 elif type(res_obj).__name__ == "TARGET_GROUP":
                     if not tg_type:

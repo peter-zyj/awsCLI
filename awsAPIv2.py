@@ -490,7 +490,7 @@ class aws(object):
                         else:
                             break
 
-                        if num >= 10:
+                        if num >= 50:
                             break
 
 

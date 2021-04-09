@@ -1386,8 +1386,8 @@ Auto_EC2_Sec(EC2INSTANCE):
 
 
 @pytest.mark.deploy
-@pytest.mark.asav
-def test_ASAv():
+@pytest.mark.asaTest
+def test_ASATEST():
     cont ='''
 Auto_IG_App(INTERNET_GATEWAY):
   action:
@@ -1487,10 +1487,53 @@ def test_manual_termination():
     obj = aws(setting, record=False)
     atexit.register(obj.close)
 
-    name = "aws_cli_20-40-55_07-04-2021"
+    name = "aws_cli_19-43-21_08-04-2021"
     obj.manual_termination(name)
 
     obj.close()
+
+@pytest.mark.jb
+def test_jb():
+    cont ='''
+Auto_JB(EC2INSTANCE):
+  image-id: ami-048c9d7c1a195950b
+  instance-type: t2.micro
+  key-name: testMonkey
+  security-group-ids: sg-023f6484a527bf299
+  count: 1
+  subnet-id: subnet-0c1736b45d0031276
+  associate-public-ip-address: None
+  private-ip-address: 20.0.1.20
+  action:
+    cleanUP: False
+'''
+    obj = aws(setting)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+@pytest.mark.asa
+def test_ASA():
+    cont ='''
+Auto_ASA_louis(EC2INSTANCE):
+  image-id: ami-03dda840f4c3d816e
+  instance-type: c5.xlarge
+  key-name: testMonkey
+  security-group-ids: sg-0623ef76b526af3e3
+  count: 1
+  subnet-id: subnet-0c2bc5c9f2d6eb528
+  user-data: file://day0.txt
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.10
+  action:
+    cleanUP: False
+'''
+    obj = aws(setting)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
 
 #....
 def test_auto_config_CleanUp():
