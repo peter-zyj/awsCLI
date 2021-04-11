@@ -959,6 +959,7 @@ class EC2INSTANCE(resource):
         self.reName = "aws ec2 create-tags"
         self.mainRT_disable = None
         self.mainRT_enable = None
+        self.file_transfer = {}
         self.ID = {}
         self.cmd = None
         self._cmd_composition()
@@ -986,6 +987,12 @@ class EC2INSTANCE(resource):
                     self.creation_dependency = value
             elif key == "cmd":
                 self.cmd = value
+            elif key == "transfer":
+                for item in value:
+                    src = re.compile("from:(.*?) ").findall(item)[0].strip()
+                    dst = re.compile("to:(.*?)(?=( |$))").findall(item)[0].strip()
+                    self.file_transfer[src] = dst
+
             elif key == "cleanUP":
                 self.keepAlive = False if str(value).lower() == "true" else True
 
@@ -1037,6 +1044,7 @@ class EC2INSTANCE(resource):
             if self.cmd:
                 self._add_global_access(cli_handler, sg_id)
                 self._cmd_handler(cli_handler, name)
+                self._file_transfer(cli_handler)
 
     def exec_termination(self, cli_handler):
         if self.ID:
@@ -1072,6 +1080,46 @@ class EC2INSTANCE(resource):
 
             cli_handler.raw_cli_res(self.mainRT_enable)
             self.mainRT_disable = f"aws ec2 delete-route --route-table-id {rt_id} --destination-cidr-block 0.0.0.0/0"
+
+    def _file_transfer(self, cli_handler):
+
+        if not self.file_transfer:
+            return
+
+        import paramiko
+
+        keyFile = self.raw_yaml["key-name"] + ".pem"
+        if not os.path.exists(keyFile):
+            print_color("[ERROR][EC2INSTANCE][_file_transfer]: Key file not exist in working dir:" + os.getcwd(), "red")
+            return
+
+        resp = cli_handler.raw_cli_res(f"aws ec2 describe-instances --instance-ids {self.ID[name]}", show=False)
+        try:
+            publicIP = re.compile(r"PublicIpAddress: (.*)").findall(resp)[0].strip()
+        except IndexError:
+            print_color("[ERROR][EC2INSTANCE][_file_transfer]: Public IP not found in instance {name}", "red")
+            return
+
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        while True:
+            try:
+                ssh.connect(publicIP, username='ubuntu', password='', key_filename=keyFile)
+                break
+            except Exception as e:
+                print_color(f"[ERROR][EC2INSTANCE][_file_transfer][SCP]:{e}", "red")
+                time.sleep(5)
+
+        sftp = ssh.open_sftp()
+
+        for src,dst in self.file_transfer.items():
+            sftp.put(src, dst)
+
+        sftp.close()
+        del sftp
+        ssh.close()
+        del ssh
+
 
     def _cmd_handler(self, cli_handler, name):
         import paramiko
