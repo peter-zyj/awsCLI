@@ -5,3 +5,5 @@
 !test_aws_cli.py
 !awsRESv2.py
 !aws_tb.config
+!aws_tb_louis.config
+
