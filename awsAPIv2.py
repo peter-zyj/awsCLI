@@ -51,8 +51,8 @@ class aws(object):
         self.res_mapping = {}
         self.resource = {}
         self.tobeCleanUp = {}
-        self.resCleanUp = not debug #Yijun
-        self.cfgCleanUp = True  #Yijun
+        self.resCleanUp = not debug
+        self.cfgCleanUp = True
         self.term_seq = []
         self.close_toggle = False
         self.cliLog = None
@@ -114,11 +114,11 @@ class aws(object):
         return None
 
     def _config_restore(self):
-        if self.resCleanUp:  #Yijun
+        if self.resCleanUp:
             self._res_term()
-            self.resCleanUp = False  #Yijun
+            self.resCleanUp = False
 
-        if self.cfgCleanUp:  #Yijun
+        if self.cfgCleanUp:
             if self.config:
                 path_config_bk = self.home + "/.aws/config" + "_auto_bk"
                 path_config_org = self.home + "/.aws/config"
@@ -219,7 +219,7 @@ class aws(object):
     def raw_cli_res(self, commandline, show=True, exec=True):
 
         self.record_cli(commandline)
-        if not self.resCleanUp:  #Yijun
+        if not self.resCleanUp:
             if "res_clean" in inspect.stack()[2][3]:
                 return ""
 
@@ -329,7 +329,7 @@ class aws(object):
         else:
             print_color(yaml.dump(self.tobeCleanUp), "magenta")
 
-    def record_cli(self, cmd): #Yijun
+    def record_cli(self, cmd):
         if self.cliLog:
             try:
                 with open(self.cliLog, "a") as file:
@@ -453,6 +453,8 @@ class aws(object):
                 else:
                     if not s_value:
                         pop_list.add(name)
+                        # print("[Info]::Created List:", pop_list) #Yijun
+                        # print("[Info]::Waiting List:", candi_res) #Yijun
                         yield name
                     else:
                         old = candi_res[name]
@@ -518,7 +520,7 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    res = obj.load_deployment("aws_tb.config")
+    res = obj.load_deployment("aws_tb_louis.config")
     obj.start_deployment()
 
     print_color("~~~~~~~~~~~~~~~ Ready to Rock ~~~~~~~~~~~~~~", "pink")

@@ -990,7 +990,7 @@ class EC2INSTANCE(resource):
             elif key == "transfer":
                 for item in value:
                     src = re.compile("from:(.*?) ").findall(item)[0].strip()
-                    dst = re.compile("to:(.*?)(?=( |$))").findall(item)[0].strip()
+                    dst = re.compile("to:(.*?)(?=(?: |$))").findall(item)[0].strip()
                     self.file_transfer[src] = dst
 
             elif key == "cleanUP":
@@ -1013,6 +1013,8 @@ class EC2INSTANCE(resource):
 
             if str_sgID != "--security-group-ids":
                 self.creation = re.sub(r"--security-group-ids .*?(?=( --|$))", str_sgID, self.creation)
+        else:
+            sg_id = self.raw_yaml["security-group-ids"].strip()
 
         resp = cli_handler.raw_cli_res(self.creation)
 
@@ -1044,7 +1046,7 @@ class EC2INSTANCE(resource):
             if self.cmd:
                 self._add_global_access(cli_handler, sg_id)
                 self._cmd_handler(cli_handler, name)
-                self._file_transfer(cli_handler)
+                self._file_transfer(cli_handler, name)
 
     def exec_termination(self, cli_handler):
         if self.ID:
@@ -1074,14 +1076,17 @@ class EC2INSTANCE(resource):
             resp3 = cli_handler.raw_cli_res("aws ec2 describe-internet-gateways", show=False)
             pattern3 = f'(?s)VpcId: {vpc_id}.*?InternetGatewayId: (igw-\w+)'
             igw_id = re.compile(pattern3).findall(resp3)[0]
-            # add IGW route to main
-            self.mainRT_enable = f"aws ec2 create-route --route-table-id {rt_id} --destination-cidr-block 0.0.0.0/0 " \
-                                 f"--gateway-id {igw_id}"
 
-            cli_handler.raw_cli_res(self.mainRT_enable)
-            self.mainRT_disable = f"aws ec2 delete-route --route-table-id {rt_id} --destination-cidr-block 0.0.0.0/0"
+            check_global = cli_handler.raw_cli_res(f"aws ec2 describe-route-tables --route-table-id {rt_id}", show=False)
+            if igw_id not in check_global:
+                # add IGW route to main
+                self.mainRT_enable = f"aws ec2 create-route --route-table-id {rt_id} --destination-cidr-block 0.0.0.0/0 " \
+                                     f"--gateway-id {igw_id}"
 
-    def _file_transfer(self, cli_handler):
+                cli_handler.raw_cli_res(self.mainRT_enable)
+                self.mainRT_disable = f"aws ec2 delete-route --route-table-id {rt_id} --destination-cidr-block 0.0.0.0/0"
+
+    def _file_transfer(self, cli_handler, name):
 
         if not self.file_transfer:
             return
@@ -1100,25 +1105,32 @@ class EC2INSTANCE(resource):
             print_color("[ERROR][EC2INSTANCE][_file_transfer]: Public IP not found in instance {name}", "red")
             return
 
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        while True:
-            try:
-                ssh.connect(publicIP, username='ubuntu', password='', key_filename=keyFile)
-                break
-            except Exception as e:
-                print_color(f"[ERROR][EC2INSTANCE][_file_transfer][SCP]:{e}", "red")
-                time.sleep(5)
-
-        sftp = ssh.open_sftp()
-
-        for src,dst in self.file_transfer.items():
-            sftp.put(src, dst)
-
-        sftp.close()
-        del sftp
-        ssh.close()
-        del ssh
+        for src, dst in self.file_transfer.items():
+            command = f"scp -i {keyFile} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+                      f"{src} ubuntu@{publicIP}:{dst}"
+            os.popen(command)
+        # ssh = paramiko.SSHClient()
+        # ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        # while True:
+        #     try:
+        #         ssh.connect(publicIP, username='ubuntu', password='', key_filename=keyFile)
+        #         break
+        #     except Exception as e:
+        #         print_color(f"[ERROR][EC2INSTANCE][_file_transfer][SCP]:{e}", "red")
+        #         time.sleep(5)
+        #
+        # sftp = ssh.open_sftp()
+        #
+        # for src,dst in self.file_transfer.items():
+        #     print("Debug:SRC=",src)
+        #     print("Debug:DST=",dst)
+        #
+        #     sftp.put(src, dst)
+        #
+        # sftp.close()
+        # del sftp
+        # ssh.close()
+        # del ssh
 
 
     def _cmd_handler(self, cli_handler, name):
