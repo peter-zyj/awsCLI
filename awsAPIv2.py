@@ -1,7 +1,7 @@
 import os, sys, traceback
 import re, time, datetime, inspect
 import shutil, atexit
-import subprocess
+import subprocess,collections
 import yaml
 
 from awsRESv2 import *
@@ -46,8 +46,8 @@ class aws(object):
         self.credentials = False
         self.home = os.getenv("HOME")
         self.prompt = "AWS-Auto#"
-        self.res_deployment = {}
-        self.res_yaml= None
+        self.res_deployment = collections.defaultdict(lambda: None) #Yijun
+        self.res_yaml = None
         self.res_mapping = {}
         self.resource = {}
         self.tobeCleanUp = {}
