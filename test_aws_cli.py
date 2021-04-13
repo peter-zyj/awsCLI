@@ -1482,16 +1482,6 @@ Auto_IG_App(INTERNET_GATEWAY):
     res2 = obj2.raw_cli("aws ec2 describe-vpcs")
     assert "Auto_VPC_App" not in res2
 
-@pytest.mark.term
-def test_manual_termination():
-    obj = aws(setting, record=False)
-    atexit.register(obj.close)
-
-    name = "aws_cli_07-50-39_12-04-2021"
-    obj.manual_termination(name)
-
-    obj.close()
-
 @pytest.mark.jb
 def test_jb():
     cont ='''
@@ -1512,7 +1502,7 @@ Pytest-EC2-ASA-JB(EC2INSTANCE):
       - sudo apt-get install apache2 -y
     transfer:
       - from:./testMonkey.pem to:/home/ubuntu/.
-    cleanUP: False
+    cleanUP: True
 '''
     obj = aws(setting)
     atexit.register(obj.close)
@@ -1541,6 +1531,61 @@ Auto_ASA_louis(EC2INSTANCE):
 
     obj.load_deployment(content=cont)
     obj.start_deployment()
+
+@pytest.mark.elip
+def test_ELASTIC_IP():
+    cont ='''
+Pytest-EC2(EC2INSTANCE):
+  image-id: ami-08962a4068733a2b6
+  instance-type: t2.micro
+  key-name: testMonkey
+  security-group-ids: sg-0623ef76b526af3e3
+  count: 1
+  subnet-id: subnet-0c2bc5c9f2d6eb528
+  private-ip-address: 20.0.250.111
+  action:
+    cmd:
+      - sudo apt install net-tools
+      - sudo hostname Pytest-EC2-ASA-JB
+      - sudo apt-get update
+      - sudo apt-get install apache2 -y
+    transfer:
+      - from:./testMonkey.pem to:/home/ubuntu/.
+    cleanUP: True
+
+Pytest_EIP(ELASTIC_IP):
+  instance-id: Pytest-EC2
+  action:
+    bind_to:
+      - Pytest-EC2
+    cleanUP: True
+    
+# Pytest_EIP(ELASTIC_IP):
+#     cleanUP: True
+# 
+# Pytest_EIP_Bind(BIND):
+#  public-ip: Pytest_EIP
+#  instance-id: Pytest-EC2
+#  action:
+#    bind_to:
+#      - Pytest-EC2
+#    cleanUP: True
+'''
+    obj = aws(setting)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+@pytest.mark.term
+def test_manual_termination():
+    obj = aws(setting, record=False)
+    atexit.register(obj.close)
+
+    name = "aws_cli_07-50-39_12-04-2021"
+    obj.manual_termination(name)
+
+    obj.close()
 
 #....
 def test_auto_config_CleanUp():

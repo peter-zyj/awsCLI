@@ -560,4 +560,34 @@ aws ec2 delete-network-interface --network-interface-id eni-06f303ecf53737d98
 
 aws ec2 run-instances --image-id ami-03dda840f4c3d816e --instance-type c5.xlarge --key-name testMonkey --count 1 \
  --subnet-id Yijun-mgm-subnet --security-group-ids allow-all --user-data file://day0.txt
+
+Elastic IP::
+
+aws ec2 describe-addresses
+Addresses:
+- AllocationId: eipalloc-00220e5b6a8afbbe3
+  AssociationId: eipassoc-02b5744d5a5a8cd53
+  Domain: vpc
+  InstanceId: i-0dbc383e77c57cc8e
+  NetworkBorderGroup: us-east-2
+  NetworkInterfaceId: eni-0e625e8e91057cd8e
+  NetworkInterfaceOwnerId: '439462095416'
+  PrivateIpAddress: 10.0.1.101
+  PublicIp: 3.137.130.137
+  PublicIpv4Pool: amazon
+
+| => aws ec2 allocate-address
+AllocationId: eipalloc-007d40418314a2254
+Domain: vpc
+NetworkBorderGroup: us-east-2
+PublicIp: 3.20.6.139
+PublicIpv4Pool: amazon
+
+| => aws ec2 associate-address --instance-id i-056efcabf550196ab --public-ip 3.21.141.121
+AssociationId: eipassoc-09b71bc97898063ff
+
+| => aws ec2 disassociate-address --public-ip 3.21.141.121
+
+
+aws ec2 release-address --allocation-id eipalloc-007d40418314a2254
 '''

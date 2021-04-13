@@ -1332,6 +1332,79 @@ class BIND(resource):
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
 
+class ELASTIC_IP(resource):
+    def __init__(self, tagName, content):
+        super().__init__()
+        self.name = tagName
+        self.raw_yaml = content
+        self.creation = "aws ec2 allocate-address"
+        self.termination = "aws ec2 release-address"
+        self.attach = "aws ec2 associate-address"
+        self.detach = "aws ec2 disassociate-address"
+        self.ID = None
+        self.EIP = None
+        self.instanceID = None
+        self._cmd_composition()
+
+    def _cmd_composition(self):
+        for key, value in self.raw_yaml.items():
+            if key != "action":
+                if value and value != "None":
+                    self.creation += " --" + key + " " + str(value)
+                else:
+                    self.creation += " --" + key
+            else:
+                self._action_handler(value)
+
+        self.attach += " --instance-id" + " " + "self.instanceID" + " --public-ip" + " " + "self.EIP"
+        self.detach += " --public-ip" + " " + "self.EIP"
+        self.termination += " --allocation-id" + " " + "self.ID"
+
+    def _action_handler(self, action_yaml):
+        for key, value in action_yaml.items():
+            if key == "bind_to":
+                if type(value) == str:
+                    self.creation_dependency = [value]
+                else:
+                    self.creation_dependency = value
+            elif key == "cleanUP":
+                self.keepAlive = False if str(value).lower() == "true" else True
+
+    def exec_creation(self, cli_handler):
+
+        resp = cli_handler.raw_cli_res(self.creation)
+        self.ID = re.compile(r'AllocationId: (.*)').findall(resp)[0].strip()
+        self.EIP = re.compile(r'PublicIp: (.*)').findall(resp)[0].strip()
+
+        if self.creation_dependency:
+            for res in self.creation_dependency:
+                res_obj = cli_handler.res_deployment[res]
+                if type(res_obj).__name__ == "EC2INSTANCE":
+                    ist_id = cli_handler.find_id(res)
+                    name = self.raw_yaml["instance-id"]
+                    if name in ist_id:
+                        self.attach = self.attach.replace("self.instanceID", self.instanceID)
+
+        self.attach = self.attach.replace("self.EIP", self.EIP)
+        self.detach = self.detach.replace("self.EIP", self.EIP)
+
+        while True:
+            resp = cli_handler.raw_cli_res(self.attach)
+            if "An error occurred" in resp:
+                time.sleep(5)
+            else:
+                break
+
+    def exec_termination(self, cli_handler):
+        if self.ID:
+            self.termination = self.termination.replace("self.ID", str(self.ID))
+            if not self.keepAlive:
+                cli_handler.raw_cli_res(self.detach)
+                cli_handler.raw_cli_res(self.termination)
+            else:
+                cli_handler.raw_cli_res(self.detach, exec=False)
+                cli_handler.raw_cli_res(self.termination, exec=False)
+
 if __name__ == "__main__":
     import paramiko
 
