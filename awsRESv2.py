@@ -1343,20 +1343,19 @@ class ELASTIC_IP(resource):
         self.detach = "aws ec2 disassociate-address"
         self.ID = None
         self.EIP = None
-        self.instanceID = None
         self._cmd_composition()
 
     def _cmd_composition(self):
         for key, value in self.raw_yaml.items():
             if key != "action":
                 if value and value != "None":
-                    self.creation += " --" + key + " " + str(value)
+                    self.attach += " --" + key + " " + str(value)
                 else:
-                    self.creation += " --" + key
+                    self.attach += " --" + key
             else:
                 self._action_handler(value)
 
-        self.attach += " --instance-id" + " " + "self.instanceID" + " --public-ip" + " " + "self.EIP"
+        self.attach += " --public-ip" + " " + "self.EIP"
         self.detach += " --public-ip" + " " + "self.EIP"
         self.termination += " --allocation-id" + " " + "self.ID"
 
@@ -1383,7 +1382,7 @@ class ELASTIC_IP(resource):
                     ist_id = cli_handler.find_id(res)
                     name = self.raw_yaml["instance-id"]
                     if name in ist_id:
-                        self.attach = self.attach.replace("self.instanceID", self.instanceID)
+                        self.attach = self.attach.replace(name, ist_id[name])
 
         self.attach = self.attach.replace("self.EIP", self.EIP)
         self.detach = self.detach.replace("self.EIP", self.EIP)

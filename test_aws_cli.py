@@ -1544,13 +1544,6 @@ Pytest-EC2(EC2INSTANCE):
   subnet-id: subnet-0c2bc5c9f2d6eb528
   private-ip-address: 20.0.250.111
   action:
-    cmd:
-      - sudo apt install net-tools
-      - sudo hostname Pytest-EC2-ASA-JB
-      - sudo apt-get update
-      - sudo apt-get install apache2 -y
-    transfer:
-      - from:./testMonkey.pem to:/home/ubuntu/.
     cleanUP: True
 
 Pytest_EIP(ELASTIC_IP):
