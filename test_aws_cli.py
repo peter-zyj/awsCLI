@@ -1570,6 +1570,21 @@ Pytest_EIP(ELASTIC_IP):
     obj.load_deployment(content=cont)
     obj.start_deployment()
 
+@pytest.mark.config
+def test_ASA_CONFIG():
+    import lib_yijun
+    import pexpect
+    conn = pexpect.spawn("ssh -i 'testMonkey.pem' admin@18.221.99.253")
+    conn, result, cont = lib_yijun.Geneve_reply(conn)
+    conn.sendline("en")
+    conn, result, cont = lib_yijun.Geneve_reply(conn)
+    conn.sendline("show run")
+    conn, result, cont = lib_yijun.Geneve_reply(conn)
+
+    assert "aws-proxy" in cont
+
+
+
 @pytest.mark.term
 def test_manual_termination():
     obj = aws(setting, record=False)

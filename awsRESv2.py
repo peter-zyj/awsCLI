@@ -1091,8 +1091,6 @@ class EC2INSTANCE(resource):
         if not self.file_transfer:
             return
 
-        import paramiko
-
         keyFile = self.raw_yaml["key-name"] + ".pem"
         if not os.path.exists(keyFile):
             print_color("[ERROR][EC2INSTANCE][_file_transfer]: Key file not exist in working dir:" + os.getcwd(), "red")
@@ -1160,18 +1158,29 @@ class EC2INSTANCE(resource):
 
         if type(self.cmd).__name__ == "str":
             stdin, stdout, stderr = ssh.exec_command(self.cmd)
-            if stderr:
-                print_color(f"[Warning][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd} => {stderr}", "red")
-            if stdout:
-                print_color(stdout, "green")
+            print_color(f"[Info][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd}", "yellow")
+            stdout.channel.recv_exit_status()  # Yijun
+            out_lines = stdout.readlines()
+            stderr.channel.recv_exit_status()  # Yijun
+            out_errors = stderr.readlines()
+            if out_errors:
+                print_color(f"[Error][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd} => {out_errors}", "red")
+            if out_lines:
+                print_color(out_lines, "green")
             del stdin, stdout, stderr
         elif type(self.cmd).__name__ == "list":
             for cmd in self.cmd:
                 stdin, stdout, stderr = ssh.exec_command(cmd)
-                if stderr:
-                    print_color(f"[Warning][EC2INSTANCE][_cmd_handler][{name}]:{cmd} => {stderr}", "red")
-                if stdout:
-                    print_color(stdout, "green")
+                print_color(f"[Info][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd}", "yellow")
+                stdout.channel.recv_exit_status()  # Yijun
+                out_lines = stdout.readlines()
+                stderr.channel.recv_exit_status()  # Yijun
+                out_errors = stderr.readlines()
+
+                if out_errors:
+                    print_color(f"[Error][EC2INSTANCE][_cmd_handler][{name}]:{cmd} => {out_errors}", "red")
+                if out_lines:
+                    print_color(out_lines, "green")
                 del stdin, stdout, stderr
         elif type(self.cmd).__name__ == "dict":
             print_color(f"[ERROR][EC2INSTANCE][_cmd_handler]: Unsupport command type:{self.cmd}", "red")
