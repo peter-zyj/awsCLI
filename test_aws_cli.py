@@ -1616,7 +1616,7 @@ Pytest_ASA(EC2INSTANCE):
   associate-public-ip-address: None
   private-ip-address: 20.0.250.111
   action:
-    cleanUP: True
+    cleanUP: False
     
 Pytest_NWInterface_ASA(NETWORK_INTERFACE):
   subnet-id: subnet-0c098ad4acd589c10
@@ -1624,7 +1624,7 @@ Pytest_NWInterface_ASA(NETWORK_INTERFACE):
   groups: sg-0d5dd3fd9ea7d00f8
   private-ip-address: 20.0.1.211
   action:
-    cleanUP: True
+    cleanUP: False
 
 Pytest_NWInterface_ASA_Bind(BIND):
   network-interface-id: Pytest_NWInterface_ASA
@@ -1634,40 +1634,69 @@ Pytest_NWInterface_ASA_Bind(BIND):
     bind_to:
       - Pytest_NWInterface_ASA
       - Pytest_ASA
-    cleanUP: True
+    cleanUP: False
     '''
-    obj = aws(setting)
-    atexit.register(obj.close)
-
-    obj.load_deployment(content=cont)
-    obj.start_deployment()
-
-    ip = obj.fetch_address("Pytest_ASA")
-
-    assert ip is not None
-
-    ssh_address = f"ssh -i 'testMonkey.pem' admin@{ip}"
-    print("debug:ssh-addres=",ssh_address)
+    # obj = aws(setting)
+    # atexit.register(obj.close)
+    #
+    # obj.load_deployment(content=cont)
+    # obj.start_deployment()
+    #
+    # asa_ip = obj.fetch_address("Pytest_ASA")
+    # asa_jb_ip = obj.fetch_address("Pytest_ASA_JB")
+    #
+    # assert asa_ip is not None
+    # assert asa_jb_ip is not None
+    #
+    # # JB
+    # asa_jb_copy = f"scp -i 'testMonkey.pem' geneve.smp ubuntu@{asa_jb_ip}:/var/www/html/."
+    # os.popen(asa_jb_copy)
+    #
+    # #ASA
+    # asa_address = f"ssh -i 'testMonkey.pem' admin@{asa_ip}"
+    # print("debug:asa_addres=",asa_address)
     import lib_yijun
     import pexpect
 
-    # conn = pexpect.spawn("ssh -i 'testMonkey.pem' admin@18.221.99.253")
+    asa_address = "ssh -i 'testMonkey.pem' admin@3.142.241.180"
 
-    print('WAITED', wait(600))
-    conn = pexpect.spawn(ssh_address)
+    # print('WAITED', wait(600))
+    conn = pexpect.spawn(asa_address)
     conn, result, cont = lib_yijun.Geneve_reply(conn)
-    print(result)
-    print(cont)
+
     conn.sendline("en")
     conn, result, cont = lib_yijun.Geneve_reply(conn)
-    print(result)
-    print(cont)
+
+    conn.sendline("copy http://20.0.250.20/geneve.smp disk0:/.")
+    conn, result, cont = lib_yijun.Geneve_reply(conn)
+
+    conn.sendline("conf term")
+    conn, result, cont = lib_yijun.Geneve_reply(conn)
+
+    conn.sendline("boot system disk0:/geneve.smp")
+    conn, result, cont = lib_yijun.Geneve_reply(conn)
+
+    conn.sendline("reload")
+    conn, result, cont = lib_yijun.Geneve_reply(conn)
+
+    print('WAITED', wait(600))
+    conn.close(); del conn
+
+    conn = pexpect.spawn(asa_address)
+    conn, result, cont = lib_yijun.Geneve_reply(conn)
+
+    conn.sendline("en")
+    conn, result, cont = lib_yijun.Geneve_reply(conn)
+
+    conn.sendline("conf term")
+    conn, result, cont = lib_yijun.Geneve_reply(conn)
+
+    #asa load pytest_day999.txt
+    lib_yijun.Geneve_load(conn, "pytest_day999.txt")
+
     conn.sendline("show run")
     conn, result, cont = lib_yijun.Geneve_reply(conn)
-    print(result)
-    print(cont)
-
-    assert "20.0.250.111" in cont
+    assert "20.0.1.211" in cont
 
 
 
