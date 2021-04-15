@@ -8,6 +8,38 @@ from awsAPIv2 import aws
 # import awsAPI_v2
 # from awsRES import *
 
+import shutil, sys
+def withprogressbar(func):
+    def _func_with_progress(*args, **kwargs):
+        max_width, _ = shutil.get_terminal_size()
+        gen = func(*args, **kwargs)
+        while True:
+            try:
+                progress, passed_time = next(gen)
+            except StopIteration as exc:
+                sys.stdout.write('\n')
+                return exc.value
+            else:
+                message = '[%s] {}%%({}s)'.format(progress, round(passed_time, 2))
+                bar_width = max_width - len(message) + 3
+                filled = int(round(bar_width / 100.0 * progress))
+                spaceleft = bar_width - filled
+                bar = '=' * filled + ' ' * spaceleft
+                sys.stdout.write((message+'\r') % bar)
+                sys.stdout.flush()
+
+    return _func_with_progress
+
+@withprogressbar
+def wait(seconds):
+    start = time.time()
+    step = seconds / 100.0
+    for i in range(1, 101):
+        time.sleep(step)
+        passed_time = time.time() - start
+        yield i, passed_time  # Send % of progress to withprogressbar
+    return time.time() - start
+
 @pytest.fixture(scope="function", autouse=True)
 def setup(request):
     global setting
@@ -1513,7 +1545,7 @@ Pytest-EC2-ASA-JB(EC2INSTANCE):
 @pytest.mark.asa
 def test_ASA():
     cont ='''
-Auto_ASA_louis(EC2INSTANCE):
+  pytest_ASA(EC2INSTANCE):
   image-id: ami-03dda840f4c3d816e
   instance-type: c5.xlarge
   key-name: testMonkey
@@ -1572,16 +1604,70 @@ Pytest_EIP(ELASTIC_IP):
 
 @pytest.mark.config
 def test_ASA_CONFIG():
+    cont = '''
+Pytest_ASA(EC2INSTANCE):
+  image-id: ami-03dda840f4c3d816e
+  instance-type: c5.xlarge
+  key-name: testMonkey
+  security-group-ids: sg-035d152f039e6a6cf
+  count: 1
+  subnet-id: subnet-0d850495b884e6216
+  user-data: file://pytest_day0.txt
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.111
+  action:
+    cleanUP: True
+    
+Pytest_NWInterface_ASA(NETWORK_INTERFACE):
+  subnet-id: subnet-0c098ad4acd589c10
+  description: Test Data Network for ASA
+  groups: sg-0d5dd3fd9ea7d00f8
+  private-ip-address: 20.0.1.211
+  action:
+    cleanUP: True
+
+Pytest_NWInterface_ASA_Bind(BIND):
+  network-interface-id: Pytest_NWInterface_ASA
+  instance-id: Pytest_ASA
+  device-index: 1
+  action:
+    bind_to:
+      - Pytest_NWInterface_ASA
+      - Pytest_ASA
+    cleanUP: True
+    '''
+    obj = aws(setting)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+    ip = obj.fetch_address("Pytest_ASA")
+
+    assert ip is not None
+
+    ssh_address = f"ssh -i 'testMonkey.pem' admin@{ip}"
+    print("debug:ssh-addres=",ssh_address)
     import lib_yijun
     import pexpect
-    conn = pexpect.spawn("ssh -i 'testMonkey.pem' admin@18.221.99.253")
+
+    # conn = pexpect.spawn("ssh -i 'testMonkey.pem' admin@18.221.99.253")
+
+    print('WAITED', wait(600))
+    conn = pexpect.spawn(ssh_address)
     conn, result, cont = lib_yijun.Geneve_reply(conn)
+    print(result)
+    print(cont)
     conn.sendline("en")
     conn, result, cont = lib_yijun.Geneve_reply(conn)
+    print(result)
+    print(cont)
     conn.sendline("show run")
     conn, result, cont = lib_yijun.Geneve_reply(conn)
+    print(result)
+    print(cont)
 
-    assert "aws-proxy" in cont
+    assert "20.0.250.111" in cont
 
 
 

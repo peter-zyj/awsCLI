@@ -961,6 +961,7 @@ class EC2INSTANCE(resource):
         self.mainRT_enable = None
         self.file_transfer = {}
         self.ID = {}
+        self.publicIP = None
         self.cmd = None
         self._cmd_composition()
 
@@ -1086,6 +1087,20 @@ class EC2INSTANCE(resource):
                 cli_handler.raw_cli_res(self.mainRT_enable)
                 self.mainRT_disable = f"aws ec2 delete-route --route-table-id {rt_id} --destination-cidr-block 0.0.0.0/0"
 
+    def fetch_PIP(self, cli_handler, name):
+        if not self.publicIP:
+            while True:
+                resp = cli_handler.raw_cli_res(f"aws ec2 describe-instances --instance-ids {self.ID[name]}", show=False)
+                try:
+                    publicIP = re.compile(r"PublicIpAddress: (\d+?\.\d+?\.\d+?\.\d+)").findall(resp)[0].strip()
+                    self.publicIP = publicIP
+                    break
+                except IndexError:
+                    print_color("[ERROR][EC2INSTANCE][_file_transfer]: Public IP not found in instance {name}", "red")
+                    continue
+
+        return self.publicIP
+
     def _file_transfer(self, cli_handler, name):
 
         if not self.file_transfer:
@@ -1096,12 +1111,7 @@ class EC2INSTANCE(resource):
             print_color("[ERROR][EC2INSTANCE][_file_transfer]: Key file not exist in working dir:" + os.getcwd(), "red")
             return
 
-        resp = cli_handler.raw_cli_res(f"aws ec2 describe-instances --instance-ids {self.ID[name]}", show=False)
-        try:
-            publicIP = re.compile(r"PublicIpAddress: (.*)").findall(resp)[0].strip()
-        except IndexError:
-            print_color("[ERROR][EC2INSTANCE][_file_transfer]: Public IP not found in instance {name}", "red")
-            return
+        publicIP = self.fetch_PIP(cli_handler, name)
 
         for src, dst in self.file_transfer.items():
             command = f"scp -i {keyFile} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
@@ -1266,7 +1276,7 @@ class NETWORK_INTERFACE(resource):
             if not self.keepAlive:
                 while True:
                     resp = cli_handler.raw_cli_res(self.termination)
-                    if "An error occurred" in resp:
+                    if "An error occurred" in resp or "Could not connect to the endpoint URL" in resp:
                         time.sleep(5)
                     else:
                         break

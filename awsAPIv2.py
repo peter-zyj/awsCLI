@@ -495,6 +495,21 @@ class aws(object):
                         if num >= 50:
                             break
 
+    def fetch_address(self, res_name):
+        if res_name not in self.res_deployment:
+            print_color(f"[Warning][aws][fetch_address]: unknown res {res_name}","yellow")
+            return None
+        else:
+            res_obj = self.res_deployment[res_name]
+            if type(res_obj).__name__ == "EC2INSTANCE":
+                IP = res_obj.fetch_PIP(self, res_name)
+                if IP:
+                    return IP
+                print_color(f"[Warning][aws][fetch_address]: Can't find the IP from {res_name}", "yellow")
+                return None
+        print_color(f"[Warning][aws][fetch_address]: no support of {res_name}", "yellow")
+        return None
+
 
 if __name__ == "__main__":
     setting = {}
