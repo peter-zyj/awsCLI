@@ -1133,7 +1133,7 @@ class EC2INSTANCE(resource):
         #     print("Debug:SRC=",src)
         #     print("Debug:DST=",dst)
         #
-        #     sftp.put(src, dst)
+        #     sftp.put(src, dst) #sftp.put("./yijunzhu", "/home/ubuntu/yijunzhu3")
         #
         # sftp.close()
         # del sftp
@@ -1176,7 +1176,7 @@ class EC2INSTANCE(resource):
             if out_errors:
                 print_color(f"[Error][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd} => {out_errors}", "red")
             if out_lines:
-                print_color(out_lines, "green")
+                print_color(f"cmd_output\n:{out_lines}", "green")
             del stdin, stdout, stderr
         elif type(self.cmd).__name__ == "list":
             for cmd in self.cmd:
@@ -1190,7 +1190,7 @@ class EC2INSTANCE(resource):
                 if out_errors:
                     print_color(f"[Error][EC2INSTANCE][_cmd_handler][{name}]:{cmd} => {out_errors}", "red")
                 if out_lines:
-                    print_color(out_lines, "green")
+                    print_color(f"cmd_output\n:{out_lines}", "green")
                 del stdin, stdout, stderr
         elif type(self.cmd).__name__ == "dict":
             print_color(f"[ERROR][EC2INSTANCE][_cmd_handler]: Unsupport command type:{self.cmd}", "red")

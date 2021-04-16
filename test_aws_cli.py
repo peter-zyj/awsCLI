@@ -1616,7 +1616,7 @@ Pytest_ASA(EC2INSTANCE):
   associate-public-ip-address: None
   private-ip-address: 20.0.250.111
   action:
-    cleanUP: False
+    cleanUP: True
     
 Pytest_NWInterface_ASA(NETWORK_INTERFACE):
   subnet-id: subnet-0c098ad4acd589c10
@@ -1624,7 +1624,7 @@ Pytest_NWInterface_ASA(NETWORK_INTERFACE):
   groups: sg-0d5dd3fd9ea7d00f8
   private-ip-address: 20.0.1.211
   action:
-    cleanUP: False
+    cleanUP: True
 
 Pytest_NWInterface_ASA_Bind(BIND):
   network-interface-id: Pytest_NWInterface_ASA
@@ -1634,7 +1634,7 @@ Pytest_NWInterface_ASA_Bind(BIND):
     bind_to:
       - Pytest_NWInterface_ASA
       - Pytest_ASA
-    cleanUP: False
+    cleanUP: True
     '''
     # obj = aws(setting)
     # atexit.register(obj.close)
@@ -1697,6 +1697,78 @@ Pytest_NWInterface_ASA_Bind(BIND):
     conn.sendline("show run")
     conn, result, cont = lib_yijun.Geneve_reply(conn)
     assert "20.0.1.211" in cont
+
+
+@pytest.mark.jump
+def test_JB_CONTROL():
+    cont = '''
+Pytest-EC2-JB(EC2INSTANCE):
+  image-id: ami-08962a4068733a2b6
+  instance-type: t2.micro
+  key-name: testMonkey
+  security-group-ids: sg-035d152f039e6a6cf
+  count: 1
+  subnet-id: subnet-0d850495b884e6216
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.222
+  action:
+    cmd:
+      - sudo hostname Pytest-EC2-JB
+    transfer:
+      - from:./testMonkey.pem to:/home/ubuntu/.
+    cleanUP: True
+
+Pytest-EC2-INSIDE(EC2INSTANCE):
+  image-id: ami-08962a4068733a2b6
+  instance-type: t2.micro
+  key-name: testMonkey
+  security-group-ids: sg-035d152f039e6a6cf
+  count: 1
+  subnet-id: subnet-0d850495b884e6216
+  private-ip-address: 20.0.250.223
+  action:
+    cleanUP: True
+'''
+    obj = aws(setting)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+    jb_ip = obj.fetch_address("Pytest-EC2-JB")
+
+    print("debug:jb_address=",jb_ip)
+
+    print('Wait for the instance Boot Up!')
+    print('WAITED', wait(30))
+    import paramiko
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    # ssh.connect("18.191.189.206", username='ubuntu', password='', key_filename="testMonkey.pem")
+    ssh.connect(jb_ip, username='ubuntu', password='', key_filename="testMonkey.pem")
+
+    # ssh.exec_command("ssh -i 'testMonkey.pem' ubuntu@10.0.1.201 'hostname'")[1].readlines()
+    _, stdout, _ = ssh.exec_command("ping 8.8.8.8 -c 1")
+    stdout.channel.recv_exit_status()
+    resp1 = "".join(stdout.readlines())
+    # print("debug::1",resp1)
+    assert "0% packet loss" in resp1
+
+    while True:
+        _, stdout, _ = ssh.exec_command("ssh -i 'testMonkey.pem' -o StrictHostKeyChecking=no "
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@20.0.250.223 'ping 8.8.8.8 -c 1'")
+        stdout.channel.recv_exit_status()
+        resp2 = "".join(stdout.readlines())
+        if not resp2:
+            print("～～～～～～empty~~~~~~~~")
+            continue
+        else:
+            break
+
+    assert "100% packet loss" in resp2
+
 
 
 
