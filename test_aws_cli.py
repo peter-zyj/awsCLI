@@ -72,6 +72,7 @@ def setup(request):
 
     request.addfinalizer(teardown)
 
+@pytest.mark.setting
 def test_default_configure_file():
     obj = aws()
     obj.close()
@@ -1777,7 +1778,7 @@ def test_manual_termination():
     obj = aws(setting, record=False)
     atexit.register(obj.close)
 
-    name = "aws_cli_07-50-39_12-04-2021"
+    name = "aws_cli_08-45-55_12-04-2021-test"
     obj.manual_termination(name)
 
     obj.close()

@@ -67,6 +67,8 @@ class aws(object):
 
         if not configuration:
             setting = {}
+            print("!!!!!!!!")
+            print(self.credentials)
             if not self.credentials:
                 credentials = self._credentials_interactive_setup()
                 setting["credentials"] = credentials
@@ -535,7 +537,7 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    res = obj.load_deployment("aws_tb_louis.config")
+    res = obj.load_deployment("aws_tb_test.config")
     obj.start_deployment()
 
     print_color("~~~~~~~~~~~~~~~ Ready to Rock ~~~~~~~~~~~~~~", "pink")
