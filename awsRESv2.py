@@ -7,6 +7,7 @@ import yaml
 from awsAPI import aws, print_color
 
 #version 2: backup all termination/creation cli
+#version 2.1: add GWLB v1 support
 class resource(object):
     def __init__(self):
         self.creation_dependency = None
@@ -1116,7 +1117,7 @@ class EC2INSTANCE(resource):
         for src, dst in self.file_transfer.items():
             command = f"scp -i {keyFile} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
                       f"{src} ubuntu@{publicIP}:{dst}"
-            os.popen(command)
+            os.popen(command).read() #//os.popen(command) 文件太大，会truncate， 所以要read（）
         # ssh = paramiko.SSHClient()
         # ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         # while True:

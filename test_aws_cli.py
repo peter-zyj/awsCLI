@@ -1771,14 +1771,24 @@ Pytest-EC2-INSIDE(EC2INSTANCE):
     assert "100% packet loss" in resp2
 
 
+@pytest.mark.new
+def test_new_testbed():
+    obj = aws(setting, debug=False)
+    atexit.register(obj.close)
 
+    obj.load_deployment(fileName="aws_tb_pytest_west_1.config")
+    obj.start_deployment()
+
+    print("Rock and Roll!")
+
+    obj.close()
 
 @pytest.mark.term
 def test_manual_termination():
     obj = aws(setting, record=False)
     atexit.register(obj.close)
 
-    name = "aws_cli_08-45-55_12-04-2021-test"
+    name = "aws_cli_10-48-37_20-04-2021"
     obj.manual_termination(name)
 
     obj.close()
