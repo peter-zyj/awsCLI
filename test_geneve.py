@@ -49,7 +49,7 @@ def load_asa_config(asa_address):
     conn, result, cont = Geneve_reply(conn)
     assert "20.0.1.101" in cont
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def setup(request):
     global setting, aws_obj
     setting = {}
@@ -68,7 +68,7 @@ def setup(request):
         bytes_str = f.read().encode()
         md5_default_credentials = hashlib.md5(bytes_str).digest()
 
-    aws_obj = aws(setting,debug=True)
+    aws_obj = aws(setting,debug=False)
     atexit.register(aws_obj.close)
 
     aws_obj.load_deployment(fileName="aws_tb_pytest_west_1.config")

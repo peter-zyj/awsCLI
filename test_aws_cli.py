@@ -1770,6 +1770,84 @@ Pytest-EC2-INSIDE(EC2INSTANCE):
 
     assert "100% packet loss" in resp2
 
+@pytest.mark.ami
+def test_AMI_BUILDER():
+    cont = '''
+Test-EC2-Ami-Builder(EC2INSTANCE):
+  image-id: ami-031b673f443c2172c
+  instance-type: t2.micro
+  key-name: testDog
+  security-group-ids: sg-05e17a6782a8b59cf
+  count: 1
+  subnet-id: subnet-0d3b78a1b8b44a3cd
+  associate-public-ip-address: None
+  private-ip-address: 10.0.250.20
+  action:
+    cmd:
+      - sudo apt install net-tools
+      - sudo hostname Test-EC2-Ami-Builder
+      - sudo chmod -R 777 /home/ubuntu
+    transfer:
+      - from:./testDog.pem to:/home/ubuntu/.
+      - from:./qcow2_image to:home/ubuntu/.
+      - from:./fixup_ftd to:home/ubuntu/.
+    cleanUP: True
+'''
+    obj = aws(setting)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+    resize_cmd = "sudo chmod +x /mnt/fixup.sh;" \
+                 "sudo /mnt/fixup.sh preinstall;" \
+                 "sudo /mnt/fixup.sh doinstall;" \
+                 "sudo /mnt/fixup.sh postinstall"
+
+    builder_ip = obj.fetch_address("Test-EC2-Ami-Builder")
+
+    pattern = "VolumeId: (.*)"
+    volumn_id = {"aws ec2 describe-instances --instance-id i-043c56b84150b98b1"}
+
+    snapshot_creation = 'aws ec2 create-snapshot --volume-id vol-1234567890abcdef0 ' \
+                        '--description "This is my root volume snapshot"'
+
+    ami_generate = 'aws ec2 create-image \
+                        --instance-id i-1234567890abcdef0 \
+                        --name "My server" \
+                        --description "An AMI for my server"'
+
+    print("debug:builder_ip_address=",builder_ip)
+
+    print('Wait for the instance Boot Up!')
+    print('WAITED', wait(30))
+    import paramiko
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    # ssh.connect("18.191.189.206", username='ubuntu', password='', key_filename="testMonkey.pem")
+    ssh.connect(builder_ip, username='ubuntu', password='', key_filename="testDog.pem")
+
+    _, stdout, _ = ssh.exec_command("resize_cmd")
+    stdout.channel.recv_exit_status()
+    resp1 = "".join(stdout.readlines())
+    # print("debug::1",resp1)
+    assert "0% packet loss" in resp1
+
+    # while True:
+    #     _, stdout, _ = ssh.exec_command("ssh -i 'testMonkey.pem' -o StrictHostKeyChecking=no "
+    #                                     "-o UserKnownHostsFile=/dev/null ubuntu@20.0.250.223 'ping 8.8.8.8 -c 1'")
+    #     stdout.channel.recv_exit_status()
+    #     resp2 = "".join(stdout.readlines())
+    #     if not resp2:
+    #         print("～～～～～～empty~~~~~~~~")
+    #         continue
+    #     else:
+    #         break
+
+    # assert "100% packet loss" in resp2
+
 
 @pytest.mark.new
 def test_new_testbed():

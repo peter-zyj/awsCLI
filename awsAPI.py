@@ -590,4 +590,25 @@ AssociationId: eipassoc-09b71bc97898063ff
 
 
 aws ec2 release-address --allocation-id eipalloc-007d40418314a2254
+
+ami_builder
+aws ec2 create-snapshot --volume-id vol-06dcf2b49d6232cc2 --description "Yijun try for 1st DIY ami_builder"
+Description: Yijun try for 1st DIY ami_builder
+Encrypted: false
+OwnerId: '439462095416'
+Progress: ''
+SnapshotId: snap-051fea0f686c598f4
+StartTime: '2021-04-20T22:44:48+00:00'
+State: pending
+Tags: []
+VolumeId: vol-06dcf2b49d6232cc2
+VolumeSize: 8
+
+aws ec2 delete-snapshot --snapshot-id snap-051fea0f686c598f4
+
+
+aws ec2 register-image --name "Yijun_image" --root-device-name /dev/xvda --block-device-mappings DeviceName=/dev/xvda,Ebs={SnapshotId=snap-051fea0f686c598f4}
+ImageId: ami-0d34f53a55b615e40
+
+aws ec2 deregister-image --image-id ami-0d34f53a55b615e40
 '''
