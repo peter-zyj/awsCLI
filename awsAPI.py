@@ -611,4 +611,7 @@ aws ec2 register-image --name "Yijun_image" --root-device-name /dev/xvda --block
 ImageId: ami-0d34f53a55b615e40
 
 aws ec2 deregister-image --image-id ami-0d34f53a55b615e40
+
+#outside to inside
+access-list geneve extended permit icmp host 18.219.227.30 host 10.0.1.101 
 '''

@@ -7,7 +7,7 @@ import pytest
 from awsAPIv2 import aws
 from lib_yijun import *
 
-def load_asa_config(asa_address):
+def load_asa_config(asa_address, debug=False):
     import pexpect
 
     # asa_address = "ssh -i 'testDog.pem' admin@3.142.241.180"
@@ -19,7 +19,7 @@ def load_asa_config(asa_address):
     conn, result, cont = Geneve_reply(conn)
 
     conn.sendline("copy http://20.0.250.10/geneve.smp disk0:/.")
-    conn, result, cont = Geneve_reply(conn, timeout=120)
+    conn, result, cont = Geneve_reply(conn, timeout=120, debug=debug)
 
     conn.sendline("conf term")
     conn, result, cont = Geneve_reply(conn)
@@ -27,8 +27,13 @@ def load_asa_config(asa_address):
     conn.sendline("boot system disk0:/geneve.smp")
     conn, result, cont = Geneve_reply(conn)
 
+    if debug:
+        print("~~~~~~Debug~~~~~~~")
+        print('WAITED', wait(600))
+        pytest.skip("Time to debug ASA error before reload")
+
     conn.sendline("reload")
-    conn, result, cont = Geneve_reply(conn)
+    conn, result, cont = Geneve_reply(conn, debug=debug)
 
     print('WAITED', wait(600))
     conn.close(); del conn
@@ -53,6 +58,7 @@ def load_asa_config(asa_address):
 def setup(request):
     global setting, aws_obj
     setting = {}
+
     with open("/Users/yijunzhu/.aws/config_auto", "r") as f:
         cfg = f.read()
     with open("/Users/yijunzhu/.aws/credentials_auto", "r") as f:
@@ -68,7 +74,8 @@ def setup(request):
         bytes_str = f.read().encode()
         md5_default_credentials = hashlib.md5(bytes_str).digest()
 
-    aws_obj = aws(setting,debug=False)
+    debug = request.config.option.trs
+    aws_obj = aws(setting,debug=debug)
     atexit.register(aws_obj.close)
 
     aws_obj.load_deployment(fileName="aws_tb_pytest_west_1.config")
@@ -77,7 +84,7 @@ def setup(request):
     asa_ip = aws_obj.fetch_address("Test-EC2-ASA")
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
 
-    load_asa_config(asa_address)
+    load_asa_config(asa_address, debug)
 
     def teardown():
 
@@ -122,6 +129,7 @@ def test_Basic_PingGoogle():
 
 @pytest.mark.install
 def test_apt_install():
+    print("Start test_apt_install")
     import paramiko
 
     ssh = paramiko.SSHClient()
@@ -155,3 +163,4 @@ def test_apt_install():
     assert "10.0.1.101" in resp2
 
     ssh.close()
+

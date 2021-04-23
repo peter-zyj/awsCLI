@@ -5,6 +5,7 @@ import atexit
 import pytest
 
 from awsAPIv2 import aws
+from lib_yijun import *
 # import awsAPI_v2
 # from awsRES import *
 
@@ -39,6 +40,53 @@ def wait(seconds):
         passed_time = time.time() - start
         yield i, passed_time  # Send % of progress to withprogressbar
     return time.time() - start
+
+def load_asa_config(asa_address, debug=False):
+    import pexpect
+    print("Mark: ~~~~~~Enter load_asa_config~~~~~~")
+    # asa_address = "ssh -i 'testDog.pem' admin@3.142.241.180"
+
+    conn = pexpect.spawn(asa_address)
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("en")
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("copy http://20.0.250.10/geneve.smp disk0:/.")
+    conn, result, cont = Geneve_reply(conn, timeout=120, debug=debug)
+
+    conn.sendline("conf term")
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("boot system disk0:/geneve.smp")
+    conn, result, cont = Geneve_reply(conn)
+
+    if debug:
+        print("~~~~~~Debug~~~~~~~")
+        print('WAITED', wait(600))
+        pytest.skip("Time to debug ASA error before reload")
+
+    conn.sendline("reload")
+    conn, result, cont = Geneve_reply(conn, debug=debug)
+
+    print('WAITED', wait(600))
+    conn.close(); del conn
+
+    conn = pexpect.spawn(asa_address)
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("en")
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("conf term")
+    conn, result, cont = Geneve_reply(conn)
+
+    #asa load pytest_day999.txt
+    Geneve_load(conn, "pytest_day999.txt")
+
+    conn.sendline("show run")
+    conn, result, cont = Geneve_reply(conn)
+    assert "20.0.1.101" in cont
 
 @pytest.fixture(scope="function", autouse=True)
 def setup(request):
@@ -1546,24 +1594,31 @@ Pytest-EC2-ASA-JB(EC2INSTANCE):
 @pytest.mark.asa
 def test_ASA():
     cont ='''
-  pytest_ASA(EC2INSTANCE):
-  image-id: ami-03dda840f4c3d816e
+Test-EC2-ASA-debug(EC2INSTANCE):
+  image-id: ami-01cab33393210e391
   instance-type: c5.xlarge
-  key-name: testMonkey
-  security-group-ids: sg-0623ef76b526af3e3
+  key-name: testDog
+  security-group-ids: sg-00444615bb2e31e4a
   count: 1
-  subnet-id: subnet-0c2bc5c9f2d6eb528
-  user-data: file://day0.txt
+  subnet-id: subnet-07c5ed96af9cbb194
   associate-public-ip-address: None
-  private-ip-address: 20.0.250.10
+  private-ip-address: 20.0.250.11
+  user-data: file://pytest_day0_64.txt
   action:
-    cleanUP: False
+    cleanUP: True
+
 '''
     obj = aws(setting)
     atexit.register(obj.close)
 
     obj.load_deployment(content=cont)
     obj.start_deployment()
+
+    time.sleep(120)
+    asa_ip = obj.fetch_address("Test-EC2-ASA-debug")
+    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+
+    load_asa_config(asa_address, debug=False)
 
 @pytest.mark.elip
 def test_ELASTIC_IP():
@@ -1866,7 +1921,7 @@ def test_manual_termination():
     obj = aws(setting, record=False)
     atexit.register(obj.close)
 
-    name = "aws_cli_10-48-37_20-04-2021"
+    name = "aws_cli_10-02-04_22-04-2021"
     obj.manual_termination(name)
 
     obj.close()
