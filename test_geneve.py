@@ -27,10 +27,10 @@ def load_asa_config(asa_address, debug=False):
     conn.sendline("boot system disk0:/geneve.smp")
     conn, result, cont = Geneve_reply(conn)
 
-    if debug:
-        print("~~~~~~Debug~~~~~~~")
-        print('WAITED', wait(600))
-        pytest.skip("Time to debug ASA error before reload")
+    # if debug:
+    #     print("~~~~~~Debug~~~~~~~")
+    #     print('WAITED', wait(600))
+    #     pytest.skip("Time to debug ASA error before reload")
 
     conn.sendline("reload")
     conn, result, cont = Geneve_reply(conn, debug=debug)
@@ -53,6 +53,24 @@ def load_asa_config(asa_address, debug=False):
     conn.sendline("show run")
     conn, result, cont = Geneve_reply(conn)
     assert "20.0.1.101" in cont
+
+def asa_config(asa_address, lines, debug=False):
+    import pexpect
+
+    conn = pexpect.spawn(asa_address)
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("en")
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("conf term")
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline(lines)
+    conn, result, cont = Geneve_reply(conn, debug=debug)
+
+    return conn, result, cont
+
 
 @pytest.fixture(scope="module", autouse=True)
 def setup(request):
@@ -102,7 +120,7 @@ def setup(request):
 
     request.addfinalizer(teardown)
 
-@pytest.mark.basic
+@pytest.mark.basic1to2
 def test_Basic_PingGoogle():
     import paramiko
 
@@ -116,6 +134,37 @@ def test_Basic_PingGoogle():
     while True:
         _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
                                         "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'ping 8.8.8.8 -c 1'")
+        stdout.channel.recv_exit_status()
+        resp1 = "".join(stdout.readlines())
+        if not resp1:
+            continue
+        else:
+            break
+
+    assert "0% packet loss" in resp1
+    ssh.close()
+
+@pytest.mark.basic2to1
+def test_Basic_PingApp():
+    import paramiko
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    jb_ip = aws_obj.fetch_address("Test-EC2-App-JB")
+    elip = aws_obj.fetch_address("Test-EC2-App")
+
+    access_list = "access-list geneve extended permit icmp host {jb_ip} host 10.0.1.101"
+
+    asa_ip = aws_obj.fetch_address("Test-EC2-ASA")
+    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+
+    asa_config(asa_address, access_list)
+
+    ssh.connect(jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+
+    while True:
+        _, stdout, _ = ssh.exec_command(f"ping {elip} -c 1")
         stdout.channel.recv_exit_status()
         resp1 = "".join(stdout.readlines())
         if not resp1:
@@ -164,3 +213,22 @@ def test_apt_install():
 
     ssh.close()
 
+@pytest.mark.tcp
+def test_ssh():
+    pass
+
+@pytest.mark.tcp
+def test_tcp_reset():
+    pass
+
+@pytest.mark.udp
+def test_nslookup():
+    pass
+
+@pytest.mark.udp
+def test_udp_packet():
+    pass
+
+@pytest.mark.udp
+def test_udp_geneve():
+    pass

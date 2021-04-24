@@ -613,5 +613,8 @@ ImageId: ami-0d34f53a55b615e40
 aws ec2 deregister-image --image-id ami-0d34f53a55b615e40
 
 #outside to inside
-access-list geneve extended permit icmp host 18.219.227.30 host 10.0.1.101 
+//access-list geneve extended permit ip 10.0.1.0 255.255.255.0 any 
+access-list geneve extended permit icmp host 3.101.116.24 host 10.0.1.101 
+access-list geneve extended permit tcp host 3.101.116.24 host 10.0.1.101 
+access-list geneve extended permit udp host 3.101.116.24 host 10.0.1.101 
 '''
