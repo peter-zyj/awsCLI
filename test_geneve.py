@@ -74,6 +74,11 @@ def asa_config(asa_address, lines, debug=False):
 
 @pytest.fixture(scope="module", autouse=True)
 def setup(request):
+    skip_updown = request.config.option.skip_updown
+    if skip_updown:
+        print("\nsetup/teardown: skipped")
+        return
+
     global setting, aws_obj
     setting = {}
 
@@ -214,8 +219,62 @@ def test_apt_install():
     ssh.close()
 
 @pytest.mark.tcp
-def test_ssh():
-    pass
+@pytest.mark.tcp23
+def test_ssh(skip_updown):
+    print("skip_updown:",skip_updown)
+    # asa_jb_address = "ssh -i 'testDog.pem' ubuntu@3.101.116.24"
+    # asa_address = "ssh -i 'testDog.pem' ubuntu@54.241.122.28"
+
+    # 1. transfer server file
+    cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@3.101.116.24:/home/ubuntu/."
+    os.popen(cmd1).read()
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@3.101.116.24 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@54.241.122.28:/home/ubuntu/.'"
+    os.popen(cmd2).read()
+
+    # 2. run server file
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@3.101.116.24 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@54.241.122.28 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
+
+    os.popen(cmd3).read()
+
+    #3. test
+    test = """
+import socket
+s=socket.socket()
+s.connect(("54.241.122.28",23))
+s.send("Yijun is coming".encode())
+msg = s.recv(1024)
+print(msg)
+    """
+    with open("test.py", "w+") as f:
+        f.write(test)
+
+    cmd4 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "test.py ubuntu@3.101.116.24:/home/ubuntu/."
+    os.popen(cmd4).read()
+
+    cmd5 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@3.101.116.24 'sudo python3 test.py'"
+    resp = os.popen(cmd5).read()
+
+    assert "[Pytest]TCP:23 is back!" in resp
+
+    # # terminate server
+    cmd6 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@3.101.116.24 'sudo rm -rf test.py'"
+    os.popen(cmd6).read()
+
+    cmd7 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@3.101.116.24 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@54.241.122.28 \'sudo pkill python3\''"
+
+    os.popen(cmd7).read()
+
+
 
 @pytest.mark.tcp
 def test_tcp_reset():
