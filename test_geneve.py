@@ -1,11 +1,12 @@
 import os, sys
-import re, hashlib,time
+import re, hashlib, time
 import atexit
 
 import pytest
 
 from awsAPIv2 import aws
 from lib_yijun import *
+
 
 def load_asa_config(asa_address, debug=False):
     import pexpect
@@ -36,7 +37,8 @@ def load_asa_config(asa_address, debug=False):
     conn, result, cont = Geneve_reply(conn, debug=debug)
 
     print('WAITED', wait(600))
-    conn.close(); del conn
+    conn.close();
+    del conn
 
     conn = pexpect.spawn(asa_address)
     conn, result, cont = Geneve_reply(conn)
@@ -47,14 +49,15 @@ def load_asa_config(asa_address, debug=False):
     conn.sendline("conf term")
     conn, result, cont = Geneve_reply(conn)
 
-    #asa load pytest_day999.txt
+    # asa load pytest_day999.txt
     Geneve_load(conn, "pytest_day999.txt")
 
     conn.sendline("show run")
     conn, result, cont = Geneve_reply(conn)
     assert "20.0.1.101" in cont
 
-def asa_config(asa_address, lines, debug=False):
+
+def asa_config(asa_address, lines, debug=False) -> tuple:
     import pexpect
 
     conn = pexpect.spawn(asa_address)
@@ -98,7 +101,7 @@ def setup(request):
         md5_default_credentials = hashlib.md5(bytes_str).digest()
 
     debug = request.config.option.trs
-    aws_obj = aws(setting,debug=debug)
+    aws_obj = aws(setting, debug=debug)
     atexit.register(aws_obj.close)
 
     aws_obj.load_deployment(fileName="aws_tb_pytest_west_1.config")
@@ -110,7 +113,6 @@ def setup(request):
     load_asa_config(asa_address, debug)
 
     def teardown():
-
         aws_obj.close()
 
         with open("/Users/yijunzhu/.aws/config", "r") as f:
@@ -124,6 +126,7 @@ def setup(request):
         assert md5_default_credentials == md5_default_credentials_v
 
     request.addfinalizer(teardown)
+
 
 @pytest.mark.basic1to2
 def test_Basic_PingGoogle():
@@ -148,6 +151,7 @@ def test_Basic_PingGoogle():
 
     assert "0% packet loss" in resp1
     ssh.close()
+
 
 @pytest.mark.basic2to1
 def test_Basic_PingApp():
@@ -203,7 +207,6 @@ def test_apt_install():
         else:
             break
 
-
     while True:
         _, stdout2, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
                                          "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'ifconfig'")
@@ -218,10 +221,11 @@ def test_apt_install():
 
     ssh.close()
 
+
 @pytest.mark.tcp
 @pytest.mark.tcp23
-def test_ssh(skip_updown):
-    print("skip_updown:",skip_updown)
+def test_TCP23(skip_updown):
+    print("skip_updown:", skip_updown)
     # asa_jb_address = "ssh -i 'testDog.pem' ubuntu@3.101.116.24"
     # asa_address = "ssh -i 'testDog.pem' ubuntu@54.241.122.28"
 
@@ -241,7 +245,7 @@ def test_ssh(skip_updown):
 
     os.popen(cmd3).read()
 
-    #3. test
+    # 3. test
     test = """
 import socket
 s=socket.socket()
@@ -275,19 +279,82 @@ print(msg)
     os.popen(cmd7).read()
 
 
-
 @pytest.mark.tcp
 def test_tcp_reset():
     pass
 
-@pytest.mark.udp
-def test_nslookup():
-    pass
 
 @pytest.mark.udp
-def test_udp_packet():
-    pass
+@pytest.mark.udp666
+def test_UDP666(skip_updown):
+    print("skip_updown:", skip_updown)
+    # 1. transfer server file
+    cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@3.101.116.24:/home/ubuntu/."
+    os.popen(cmd1).read()
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@3.101.116.24 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@54.241.122.28:/home/ubuntu/.'"
+    os.popen(cmd2).read()
+
+    # 2. run server file
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@3.101.116.24 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@54.241.122.28 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
+
+    os.popen(cmd3).read()
+
+    # 3. test
+    test = """
+import socket
+s=socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+s.sendto("Yijun is coming".encode(), ("54.241.122.28", 666))
+msg = s.recvfrom(1024)
+print(msg[0])
+    """
+    with open("test.py", "w+") as f:
+        f.write(test)
+
+    cmd4 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "test.py ubuntu@3.101.116.24:/home/ubuntu/."
+    os.popen(cmd4).read()
+
+    cmd5 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@3.101.116.24 'sudo python3 test.py'"
+    resp = os.popen(cmd5).read()
+
+    assert "[Pytest]UDP:666 is back!" in resp
+
+    # # terminate server
+    cmd6 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@3.101.116.24 'sudo rm -rf test.py'"
+    os.popen(cmd6).read()
+
+    cmd7 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@3.101.116.24 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@54.241.122.28 \'sudo pkill python3\''"
+
+    os.popen(cmd7).read()
+
 
 @pytest.mark.udp
 def test_udp_geneve():
     pass
+
+
+@pytest.mark.cli
+def test_show():
+    cmd = "show asp drop frame geneve-invalid-nve-peer"
+    # cmd = "show run"
+    asa_address = "ssh -i 'testDog.pem' admin@18.144.54.235"
+    _, _, res = asa_config(asa_address, cmd)
+
+    assert "Last clearing: Never" in res
+
+
+# capture abc interface data-interface
+# show capture abc packet-number 18 detail decode
+#
+# copy /pcap capture:abc abc.pcap
+#
+# copy disk0:/abc.pcap scp://root@1.2.3.4:/home/ubuntu/.

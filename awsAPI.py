@@ -617,4 +617,7 @@ aws ec2 deregister-image --image-id ami-0d34f53a55b615e40
 access-list geneve extended permit icmp host 3.101.116.24 host 10.0.1.101 
 access-list geneve extended permit tcp host 3.101.116.24 host 10.0.1.101 
 access-list geneve extended permit udp host 3.101.116.24 host 10.0.1.101 
+
+license smart register idtoken <idtoken> force
+show tech-support license
 '''
