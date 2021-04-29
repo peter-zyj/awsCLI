@@ -8,3 +8,4 @@
 !aws_tb_test.config
 !aws_tb_pytest.config
 !test_geneve.py
+!aws_tb_pytest_west_1.config

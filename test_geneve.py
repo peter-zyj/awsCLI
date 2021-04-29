@@ -358,3 +358,15 @@ def test_show():
 # copy /pcap capture:abc abc.pcap
 #
 # copy disk0:/abc.pcap scp://root@1.2.3.4:/home/ubuntu/.
+
+
+# access-list geneve extended permit icmp host 3.101.116.24 host 10.0.1.101
+# access-list geneve extended permit tcp host 3.101.116.24 host 10.0.1.101
+# access-list geneve extended permit udp host 3.101.116.24 host 10.0.1.101
+
+# app_jb
+# sed -i 's///g' /etc/ssh/sshd_config
+#
+# asa_jb
+# sed -s 's///g' /etc/rsyslog.conf
+
