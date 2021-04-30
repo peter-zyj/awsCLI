@@ -1566,24 +1566,30 @@ Auto_IG_App(INTERNET_GATEWAY):
 @pytest.mark.jb
 def test_jb():
     cont ='''
-Pytest-EC2-ASA-JB(EC2INSTANCE):
-  image-id: ami-08962a4068733a2b6
+Test-EC2-App-JB(EC2INSTANCE):
+  image-id: ami-031b673f443c2172c
   instance-type: t2.micro
-  key-name: testMonkey
-  security-group-ids: sg-0623ef76b526af3e3
+  key-name: testDog
+  security-group-ids: sg-00f1b2c54a7bc855b
   count: 1
-  subnet-id: subnet-0c2bc5c9f2d6eb528
+  subnet-id: subnet-0648f9342db2d7b86
   associate-public-ip-address: None
-  private-ip-address: 20.0.250.111
+  private-ip-address: 10.0.250.10
   action:
     cmd:
       - sudo apt install net-tools
-      - sudo hostname Pytest-EC2-ASA-JB
-      - sudo apt-get update
-      - sudo apt-get install apache2 -y
+      - sudo apt update
+      - sudo hostname Test-EC2-App-JB
+      - sudo apt install python3-pip -y
+      - sudo apt install iperf -y
+      - sudo pip3 install scapy
+      - sudo sed -i 's/.*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config
+      - sudo sed -i 's/.*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+      - sudo systemctl restart sshd
+      - sudo echo -e 'rootroot\\nrootroot\\n' | sudo passwd root
     transfer:
-      - from:./testMonkey.pem to:/home/ubuntu/.
-    cleanUP: True
+      - from:./testDog.pem to:/home/ubuntu/.
+    cleanUP: False
 '''
     obj = aws(setting)
     atexit.register(obj.close)

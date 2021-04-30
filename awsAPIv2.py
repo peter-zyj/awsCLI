@@ -388,6 +388,7 @@ class aws(object):
                 return
         else:
             cont = content
+
         self.res_yaml = yaml.load(cont,Loader=yaml.FullLoader)
 
         if not self.res_yaml:
