@@ -221,6 +221,28 @@ def test_apt_install():
 
     ssh.close()
 
+@pytest.mark.pyserver
+def test_PYSERVER(skip_updown):
+    print("skip_updown:", skip_updown)
+    # asa_jb_address = "ssh -i 'testDog.pem' ubuntu@54.219.169.240"
+    # asa_address = "ssh -i 'testDog.pem' ubuntu@54.241.122.28"
+
+    # 1. transfer server file
+    cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@54.219.169.240:/home/ubuntu/."
+    os.popen(cmd1).read()
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@54.219.169.240 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@54.241.122.28:/home/ubuntu/.'"
+    os.popen(cmd2).read()
+
+    # 2. run server file
+    # cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+    #        "ubuntu@54.219.169.240 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+    #        "ubuntu@54.241.122.28 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
+    # os.popen(cmd3).read()
+
 
 @pytest.mark.tcp
 @pytest.mark.tcp23

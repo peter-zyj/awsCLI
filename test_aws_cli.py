@@ -1580,13 +1580,14 @@ Test-EC2-App-JB(EC2INSTANCE):
       - sudo apt install net-tools
       - sudo apt update
       - sudo hostname Test-EC2-App-JB
+      - sudo apt install auditd -y
       - sudo apt install python3-pip -y
       - sudo apt install iperf -y
       - sudo pip3 install scapy
       - sudo sed -i 's/.*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config
       - sudo sed -i 's/.*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config
       - sudo systemctl restart sshd
-      - sudo echo -e 'rootroot\\nrootroot\\n' | sudo passwd root
+      - sudo echo -e 'cisco123!\\ncisco123!\\n' | sudo passwd root
     transfer:
       - from:./testDog.pem to:/home/ubuntu/.
     cleanUP: False
