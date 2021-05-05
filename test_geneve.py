@@ -107,7 +107,7 @@ def setup(request):
     aws_obj.load_deployment(fileName="aws_tb_pytest_west_1.config")
     aws_obj.start_deployment()
 
-    asa_ip = aws_obj.fetch_address("Test-EC2-ASA")
+    asa_ip = aws_obj.fetch_address("Test-1-169-EC2-ASA")
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
 
     load_asa_config(asa_address, debug)
@@ -130,12 +130,13 @@ def setup(request):
 
 @pytest.mark.basic1to2
 def test_Basic_PingGoogle():
+    print("@@@@@@@@@start test:test_Basic_PingGoogle@@@@@@@@@")
     import paramiko
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    jb_ip = aws_obj.fetch_address("Test-EC2-App-JB")
+    jb_ip = aws_obj.fetch_address("Test-1-169-EC2-App-JB")
 
     ssh.connect(jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
 
@@ -229,13 +230,17 @@ def test_PYSERVER(skip_updown):
 
     # 1. transfer server file
     cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "Pytest_server.py ubuntu@54.219.169.240:/home/ubuntu/."
+           "Pytest_server.py ubuntu@54.241.131.6:/home/ubuntu/."
     os.popen(cmd1).read()
 
     cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@54.219.169.240 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "Pytest_server.py ubuntu@54.241.122.28:/home/ubuntu/.'"
+           "ubuntu@54.241.131.6 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@54.241.80.167:/home/ubuntu/.'"
     os.popen(cmd2).read()
+
+    cmd3 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@13.56.226.172:/home/ubuntu/."
+    os.popen(cmd3).read()
 
     # 2. run server file
     # cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
