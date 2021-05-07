@@ -518,9 +518,10 @@ if __name__ == "__main__":
     setting = {}
     # cfg = {"default": {"region": "shanghai", "output": "json"}}
     # cda = {"default": {"access-id": "1234", "secret-id": "3456"}}
-    with open("/Users/yijunzhu/.aws/config_auto", "r") as f:
+    home_dir = os.getenv("HOME")
+    with open(f"{home_dir}/.aws/config_auto", "r") as f:
         cfg = f.read()
-    with open("/Users/yijunzhu/.aws/credentials_auto", "r") as f:
+    with open(f"{home_dir}/.aws/credentials_auto", "r") as f:
         cda = f.read()
 
     setting["config"] = cfg
@@ -538,7 +539,7 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    res = obj.load_deployment("aws_tb_test.config")
+    res = obj.load_deployment("aws.config")
     obj.start_deployment()
 
     print_color("~~~~~~~~~~~~~~~ Ready to Rock ~~~~~~~~~~~~~~", "pink")

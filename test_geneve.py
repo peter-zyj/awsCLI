@@ -386,14 +386,26 @@ def test_show():
 #
 # copy disk0:/abc.pcap scp://root@1.2.3.4:/home/ubuntu/.
 
-
+#######################
 # access-list geneve extended permit icmp host 3.101.116.24 host 10.0.1.101
 # access-list geneve extended permit tcp host 3.101.116.24 host 10.0.1.101
 # access-list geneve extended permit udp host 3.101.116.24 host 10.0.1.101
+#######################
+# direct vs roundway
 
-# app_jb
-# sed -i 's///g' /etc/ssh/sshd_config
+# aaa authentication listener http data-interface port www
+# ~~~~exclusive~~~~
+# object network gwlb-net
+# subnet 20.0.1.0 255.255.255.0
 #
-# asa_jb
-# sed -s 's///g' /etc/rsyslog.conf
-
+# object-group network gwlb
+# network-object object gwlb-net
+#
+# object-group network metadata
+# network-object host 20.0.1.10
+#
+# object service http80
+# service tcp destination eq www
+#
+# nat (data-interface,data-interface) source static gwlb interface destination static interface metadata service http80 http80
+#
