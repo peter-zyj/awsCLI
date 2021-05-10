@@ -4,7 +4,7 @@ import atexit
 
 import pytest
 
-from awsAPIv2 import aws
+from awsAPIv3 import aws
 from lib_yijun import *
 # import awsAPI_v2
 # from awsRES import *

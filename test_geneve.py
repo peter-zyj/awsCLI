@@ -4,7 +4,7 @@ import atexit
 
 import pytest
 
-from awsAPIv2 import aws
+from awsAPIv3 import aws
 from lib_yijun import *
 
 
@@ -230,16 +230,16 @@ def test_PYSERVER(skip_updown):
 
     # 1. transfer server file
     cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "Pytest_server.py ubuntu@54.241.131.6:/home/ubuntu/."
+           "Pytest_server.py ubuntu@13.57.178.96:/home/ubuntu/."
     os.popen(cmd1).read()
 
     cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@54.241.131.6 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "Pytest_server.py ubuntu@54.241.80.167:/home/ubuntu/.'"
+           "ubuntu@13.57.178.96 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@13.52.150.43:/home/ubuntu/.'"
     os.popen(cmd2).read()
 
     cmd3 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "Pytest_server.py ubuntu@13.56.226.172:/home/ubuntu/."
+           "Pytest_server.py ubuntu@13.57.48.179:/home/ubuntu/."
     os.popen(cmd3).read()
 
     # 2. run server file
@@ -378,6 +378,75 @@ def test_show():
 
     assert "Last clearing: Never" in res
 
+
+@pytest.mark.updowngrade
+def test_image_replacement(keyFile):
+    print("keyFile::", keyFile)
+    return
+    obj = aws(setting, record=False)
+    res = obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
+    res2 = res = obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+    # backup config in ASA
+    cmd = "show run"
+    asa_address = f"ssh -i 'testDog.pem' admin@{res['public_ip']}"
+    old_config = asa_config(asa_address, cmd)
+    assert old_config != ""
+    # transfer image to asa
+    new_image = "geneve_new.smp"
+    command = f"scp -i {keyFile} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+             f"{new_image} ubuntu@{res2['public_ip']}:/var/www/html/."
+    os.popen(command).read()
+
+    import pexpect
+    conn = pexpect.spawn(asa_address)
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("en")
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("copy http://20.0.250.10/geneve_new.smp disk0:/.")
+    conn, result, cont = Geneve_reply(conn, timeout=120, debug=debug)
+
+    # print old version
+    conn.sendline("show version")
+    conn, result, cont = Geneve_reply(conn, timeout=120, debug=debug)
+
+    print("Old Version::",cont)
+
+
+    # reload asa
+    conn.sendline("boot system disk0:/geneve_new.smp")
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("reload")
+    conn, result, cont = Geneve_reply(conn, debug=debug)
+
+    print('WAITED', wait(600))
+    conn.close();
+    del conn
+
+
+    # print new version
+    conn = pexpect.spawn(asa_address)
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("en")
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("show version")
+    conn, result, cont = Geneve_reply(conn, timeout=120, debug=debug)
+
+    print("New Version::",cont)
+
+    # config is same as before/after
+    cmd = "show run"
+    asa_address = f"ssh -i 'testDog.pem' admin@{res['public_ip']}"
+    new_config = asa_config(asa_address, cmd)
+
+    temp = new_config.replace("geneve_new.smp", "geneve.smp")
+    assert temp == old_config
+
+    pass
 
 # capture abc interface data-interface
 # show capture abc packet-number 18 detail decode

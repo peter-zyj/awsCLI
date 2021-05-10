@@ -620,4 +620,9 @@ access-list geneve extended permit udp host 3.101.116.24 host 10.0.1.101
 
 license smart register idtoken <idtoken> force
 show tech-support license
+
+
+//blind
+aws ec2 describe-instances --filters Name=tag-value,Values=Test-1-169-EC2-App-JB
+
 '''
