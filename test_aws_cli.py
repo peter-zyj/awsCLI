@@ -1933,6 +1933,22 @@ def test_manual_termination():
 
     obj.close()
 
+@pytest.mark.yijun_1
+@pytest.mark.xfail(raises=ZeroDivisionError)
+def test_f():
+    3/2
+
+@pytest.mark.timer
+def test_f():
+    print("start timer")
+    timer("start")
+    print("~~~~~~~1~~~~~~~")
+    print("~~~~~~~2~~~~~~~")
+    time.sleep(10)
+
+    timer("stop")
+
+
 #....
 def test_auto_config_CleanUp():
     obj = aws()

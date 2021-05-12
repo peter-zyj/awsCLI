@@ -1,6 +1,7 @@
 import os, sys
 import re, hashlib, time
 import atexit
+from scapy.all import *
 
 import pytest
 
@@ -73,7 +74,9 @@ def asa_config(asa_address, lines, debug=False) -> tuple:
     conn.sendline(lines)
     conn, result, cont = Geneve_reply(conn, debug=debug)
 
-    return conn, result, cont
+    conn.close()
+    del conn
+    return result, cont
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -307,11 +310,6 @@ print(msg)
     os.popen(cmd7).read()
 
 
-@pytest.mark.tcp
-def test_tcp_reset():
-    pass
-
-
 @pytest.mark.udp
 @pytest.mark.udp666
 def test_UDP666(skip_updown):
@@ -365,20 +363,106 @@ print(msg[0])
     os.popen(cmd7).read()
 
 
-@pytest.mark.udp
-def test_udp_geneve():
-    pass
+@pytest.mark.counter
+def test_udp_counter():
+
+    cmd1 = "clear asp drop"
+    cmd2 = "show asp drop frame geneve-invalid-udp-checksum"
+
+    asa_address = "ssh -i 'testDog.pem' admin@54.183.212.66"
+    _, _ = asa_config(asa_address, cmd1)
+
+    send(IP(dst="20.0.1.101") / UDP(sport=20001, dport=6081, chksum=0)/b'\x08\x00\x08')
+
+    _, res = asa_config(asa_address, cmd2)
+    assert "geneve-invalid-udp-checksum" in res
 
 
-@pytest.mark.cli
-def test_show():
-    cmd = "show asp drop frame geneve-invalid-nve-peer"
+@pytest.mark.reset
+def test_tcp_counter():
+    cmd = "show asp drop frame geneve-invalid-udp-checksum"
     # cmd = "show run"
     asa_address = "ssh -i 'testDog.pem' admin@18.144.54.235"
-    _, _, res = asa_config(asa_address, cmd)
+    _, res = asa_config(asa_address, cmd)
 
     assert "Last clearing: Never" in res
 
+
+@pytest.mark.genevedebug
+def test_debug_geneve():
+    cmd1 = "debug geneve encapsulation"
+    cmd2 = "debug geneve encapsulation 4"
+    cmd3 = "debug geneve decapsulation"
+    cmd4 = "debug geneve decapsulation 4"
+    cmd5 = "debug geneve all"
+    cmd_clean = "unde all"
+    cmd_show = "show debug"
+
+    asa_address = "ssh -i 'testDog.pem' admin@54.183.212.66"
+
+    import pexpect
+
+    conn = pexpect.spawn(asa_address)
+    _, _, _ = Geneve_reply(conn)
+
+    conn.sendline("en")
+    _, _, _ = Geneve_reply(conn)
+
+    conn.sendline(cmd_clean)
+    _, _, _ = Geneve_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Geneve_reply(conn)
+    assert "debug geneve" not in res
+
+    conn.sendline(cmd_clean)
+    _, _, _ = Geneve_reply(conn)
+    conn.sendline(cmd1)
+    _, _, _ = Geneve_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Geneve_reply(conn)
+    assert "debug geneve encapsulation enabled at level 1" in res
+
+    conn.sendline(cmd_clean)
+    _, _, _ = Geneve_reply(conn)
+    conn.sendline(cmd2)
+    _, _, _ = Geneve_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Geneve_reply(conn)
+    assert "debug geneve encapsulation enabled at level 4" in res
+
+    conn.sendline(cmd_clean)
+    _, _, _ = Geneve_reply(conn)
+    conn.sendline(cmd3)
+    _, _, _ = Geneve_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Geneve_reply(conn)
+    assert "debug geneve decapsulation enabled at level 1" in res
+
+    conn.sendline(cmd_clean)
+    _, _, _ = Geneve_reply(conn)
+    conn.sendline(cmd4)
+    _, _, _ = Geneve_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Geneve_reply(conn)
+    assert "debug geneve decapsulation enabled at level 4" in res
+
+    conn.sendline(cmd_clean)
+    _, _, _ = Geneve_reply(conn)
+    conn.sendline(cmd5)
+    _, _, _ = Geneve_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Geneve_reply(conn)
+    assert "debug geneve encapsulation enabled at level 1" in res
+    assert "debug geneve decapsulation enabled at level 1" in res
+
+    conn.sendline(cmd_clean)
+    _, _, _ = Geneve_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Geneve_reply(conn)
+    assert "debug geneve" not in res
+
+    conn.close()
+    del conn
 
 @pytest.mark.addasa
 def test_addASA():
@@ -439,10 +523,11 @@ pytest_NWInterface_ASA_Bind(BIND):
     # load_asa_config(asa_address, debug=False)
 
 @pytest.mark.updowngrade
-def test_image_replacement(keyFile):
+def test_image_replacement(keyFile, trs):
     print("keyFile::", keyFile)
-    return
-    obj = aws(setting, record=False)
+    print("Debug::", trs)
+
+    obj = aws(record=False)
     res1 = obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
     res2 = res = obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
     # backup config in ASA
@@ -454,24 +539,29 @@ def test_image_replacement(keyFile):
     new_image = "geneve_new.smp"
     command = f"scp -i {keyFile} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
              f"{new_image} ubuntu@{res2['public_ip']}:/var/www/html/."
+
+    timer("start")
     os.popen(command).read()
+    timer("stop")
 
     import pexpect
+    debug = trs
     conn = pexpect.spawn(asa_address)
     conn, result, cont = Geneve_reply(conn)
 
     conn.sendline("en")
     conn, result, cont = Geneve_reply(conn)
 
-    conn.sendline("copy http://20.0.250.10/geneve_new.smp disk0:/.")
+    print("debug:start copy")
+    conn.sendline("copy http://20.0.250.10/geneve_new.smp disk0:/geneve_new.smp")
     conn, result, cont = Geneve_reply(conn, timeout=120, debug=debug)
+    print("debug:end copy")
 
     # print old version
     conn.sendline("show version")
     conn, result, cont = Geneve_reply(conn, timeout=120, debug=debug)
 
     print("Old Version::",cont)
-
 
     # reload asa
     conn.sendline("boot system disk0:/geneve_new.smp")
@@ -507,6 +597,10 @@ def test_image_replacement(keyFile):
 
     pass
 
+
+
+if __name__ == '__main__':
+    pytest.main(["-q", "-s", "-ra", "test_geneve.py"])
 # capture abc interface data-interface
 # show capture abc packet-number 18 detail decode
 #

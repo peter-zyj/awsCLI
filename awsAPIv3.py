@@ -486,45 +486,48 @@ class aws(object):
         return None
 
     # @staticmethod
-    def blind(self, resName) -> str:
-        cmd = f"aws ec2 describe-tags --filters Name=tag-value,Values={resName}"
-        res = self.raw_cli_res(cmd)
-        pattern = r"ResourceId: (.*)"
-        id = re.compile(pattern).findall(res)[0].strip()
-        return id
-        # if typeName == "EC2INSTANCE":
-        #     cmd = f"aws ec2 describe-instances --filters Name=tag-value,Values={resName}"
-        #     res = self.raw_cli_res(cmd)
-        #     pattern1 = r"PrivateIpAddress: .*"
-        #     private_ip = re.compile(pattern1).findall(res)[0].strip()
-        #     result["private_ip"] = private_ip
-        #     pattern2 = r"PublicIpAddress: .*"
-        #     public_ip = re.compile(pattern2).findall(res)[0].strip()
-        #     result["public_ip"] = public_ip
-        #     pattern3 = r"InstanceId: .*"
-        #     id = re.compile(pattern3).findall(res)[0].strip()
-        #     result["id"] = id
-        #     return result
-        #
-        # elif typeName == "SECURITY_GROUP":
-        #     cmd = f"aws ec2 describe-security-groups --filters Name=tag-value,Values={resName}"
-        #     res = self.raw_cli_res(cmd)
-        #     pattern1 = r"GroupId: .*"
-        #     id = re.compile(pattern1).findall(res)[0].strip()
-        #     result["id"] = id
-        #     return  result
-        #
-        # elif typeName == "SUBNET":
-        #     cmd = f"aws ec2 describe-subnets --filters Name=tag-value,Values={resName}"
-        #     res = self.raw_cli_res(cmd)
-        #     pattern1 = r"SubnetId: .*"
-        #     id = re.compile(pattern1).findall(res)[0].strip()
-        #     result["id"] = id
-        #     return  result
+    def blind(self, resName, typeName=None):
+        if not typeName:
+            cmd = f"aws ec2 describe-tags --filters Name=tag-value,Values={resName}"
+            res = self.raw_cli_res(cmd)
+            pattern = r"ResourceId: (.*)"
+            id = re.compile(pattern).findall(res)[0].strip()
+            return id
+        else:
+            result = {}
+            if typeName == "EC2INSTANCE":
+                cmd = f"aws ec2 describe-instances --filters Name=tag-value,Values={resName}"
+                res = self.raw_cli_res(cmd)
+                pattern1 = r"PrivateIpAddress: (.*)"
+                private_ip = re.compile(pattern1).findall(res)[0].strip()
+                result["private_ip"] = private_ip
+                pattern2 = r"PublicIpAddress: (.*)"
+                public_ip = re.compile(pattern2).findall(res)[0].strip()
+                result["public_ip"] = public_ip
+                pattern3 = r"InstanceId: (.*)"
+                id = re.compile(pattern3).findall(res)[0].strip()
+                result["id"] = id
+                return result
 
-        # res = f"[Warning][aws][blind]: unsupproted type:{typeName}"
-        # print_color(res, "yellow")
-        return result
+            elif typeName == "SECURITY_GROUP":
+                cmd = f"aws ec2 describe-security-groups --filters Name=tag-value,Values={resName}"
+                res = self.raw_cli_res(cmd)
+                pattern1 = r"GroupId: (.*)"
+                id = re.compile(pattern1).findall(res)[0].strip()
+                result["id"] = id
+                return  result
+
+            elif typeName == "SUBNET":
+                cmd = f"aws ec2 describe-subnets --filters Name=tag-value,Values={resName}"
+                res = self.raw_cli_res(cmd)
+                pattern1 = r"SubnetId: (.*)"
+                id = re.compile(pattern1).findall(res)[0].strip()
+                result["id"] = id
+                return  result
+
+            res = f"[Warning][aws][blind]: unsupproted type:{typeName}"
+            print_color(res, "yellow")
+            return result
 
 if __name__ == "__main__":
     setting = {}
