@@ -4,42 +4,10 @@ import shutil, atexit
 import subprocess,collections
 import yaml
 
-from awsRESv2 import *
-
+from awsRESv3 import *
+from lib_yijun import print_color
 #version 2: add command cli recording
 #version 3: add blind function to fetch address/id of aws resource
-
-def print_color(message, color="black", style="{}", newLine=True):
-    COLORS = {
-        "black": "\x1b[30m",
-        "red": "\x1b[31m",
-        "green": "\x1b[32m",
-        "yellow": "\x1b[33m",
-        "blue": "\x1b[34m",
-        "magenta": "\x1b[35m",
-        "cyan": "\x1b[36m",
-        "white": "\x1b[37m"
-    }
-    ENDCOLOR = "\x1b[0m"
-    color = color.lower()
-    if not color in COLORS:
-        color = "black"
-    color = COLORS[color]
-    args = list(message)
-
-    if len(args) == 0:
-        # print('{0}{1}{2}'.format(COLORS['red'],"[ERROR]:[print_color]:Empty Message!!!",ENDCOLOR))
-        message = ""
-    else:
-        args[0] = '{0}{1}'.format(color, str(args[0]))
-        args[-1] = '{1}{0}'.format(ENDCOLOR, str(args[-1]))
-        message = "".join(args)
-
-    format_str = style.format(message)
-    if newLine:
-        print(format_str)
-    else:
-        print(format_str, end="")
 
 class aws(object):
     def __init__(self, configuration=None, record=True, debug=False):
@@ -174,6 +142,7 @@ class aws(object):
             if isinstance(setting["config"], str):
                 with open(self.home + "/.aws/config", "w+") as f1:
                     f1.write(setting["config"])
+
             elif isinstance(setting["config"], dict):
                 # {"default":{"access-id":"1234","secret-id":"3456",...}, "profile2":{...}}
                 cont = ""
@@ -183,6 +152,7 @@ class aws(object):
                         cont += f"{key} = {value}" + "\n"
                 with open(self.home + "/.aws/config", "w+") as f1:
                     f1.write(cont)
+
         except KeyError:
             print("[Info]: Use default config setting")
             traceback.print_exc(file=sys.stdout)
@@ -200,6 +170,7 @@ class aws(object):
                         cont += f"{key} = {value}" + "\n"
                 with open(self.home + "/.aws/credentials", "w+") as f2:
                     f2.write(cont)
+
         except KeyError:
             print("[Info]: Use default credentials setting")
             traceback.print_exc(file=sys.stdout)
@@ -515,40 +486,44 @@ class aws(object):
         return None
 
     # @staticmethod
-    def blind(self, resName, typeName) -> dict:
-        result = collections.defaultdict(lambda: None)
-        if typeName == "EC2INSTANCE":
-            cmd = f"aws ec2 describe-instances --filters Name=tag-value,Values={resName}"
-            res = self.raw_cli_res(cmd)
-            pattern1 = r"PrivateIpAddress: .*"
-            private_ip = re.compile(pattern1).findall(res)[0].strip()
-            result["private_ip"] = private_ip
-            pattern2 = r"PublicIpAddress: .*"
-            public_ip = re.compile(pattern2).findall(res)[0].strip()
-            result["public_ip"] = public_ip
-            pattern3 = r"InstanceId: .*"
-            id = re.compile(pattern3).findall(res)[0].strip()
-            result["id"] = id
-            return result
+    def blind(self, resName) -> str:
+        cmd = f"aws ec2 describe-tags --filters Name=tag-value,Values={resName}"
+        res = self.raw_cli_res(cmd)
+        pattern = r"ResourceId: (.*)"
+        id = re.compile(pattern).findall(res)[0].strip()
+        return id
+        # if typeName == "EC2INSTANCE":
+        #     cmd = f"aws ec2 describe-instances --filters Name=tag-value,Values={resName}"
+        #     res = self.raw_cli_res(cmd)
+        #     pattern1 = r"PrivateIpAddress: .*"
+        #     private_ip = re.compile(pattern1).findall(res)[0].strip()
+        #     result["private_ip"] = private_ip
+        #     pattern2 = r"PublicIpAddress: .*"
+        #     public_ip = re.compile(pattern2).findall(res)[0].strip()
+        #     result["public_ip"] = public_ip
+        #     pattern3 = r"InstanceId: .*"
+        #     id = re.compile(pattern3).findall(res)[0].strip()
+        #     result["id"] = id
+        #     return result
+        #
+        # elif typeName == "SECURITY_GROUP":
+        #     cmd = f"aws ec2 describe-security-groups --filters Name=tag-value,Values={resName}"
+        #     res = self.raw_cli_res(cmd)
+        #     pattern1 = r"GroupId: .*"
+        #     id = re.compile(pattern1).findall(res)[0].strip()
+        #     result["id"] = id
+        #     return  result
+        #
+        # elif typeName == "SUBNET":
+        #     cmd = f"aws ec2 describe-subnets --filters Name=tag-value,Values={resName}"
+        #     res = self.raw_cli_res(cmd)
+        #     pattern1 = r"SubnetId: .*"
+        #     id = re.compile(pattern1).findall(res)[0].strip()
+        #     result["id"] = id
+        #     return  result
 
-        elif typeName == "SECURITY_GROUP":
-            cmd = f"aws ec2 describe-security-groups --filters Name=tag-value,Values={resName}"
-            res = self.raw_cli_res(cmd)
-            pattern1 = r"GroupId: .*"
-            id = re.compile(pattern1).findall(res)[0].strip()
-            result["id"] = id
-            return  result
-
-        elif typeName == "SUBNET":
-            cmd = f"aws ec2 describe-subnets --filters Name=tag-value,Values={resName}"
-            res = self.raw_cli_res(cmd)
-            pattern1 = r"SubnetId: .*"
-            id = re.compile(pattern1).findall(res)[0].strip()
-            result["id"] = id
-            return  result
-
-        res = f"[Warning][aws][blind]: unsupproted type:{typeName}"
-        print_color(res, "yellow")
+        # res = f"[Warning][aws][blind]: unsupproted type:{typeName}"
+        # print_color(res, "yellow")
         return result
 
 if __name__ == "__main__":

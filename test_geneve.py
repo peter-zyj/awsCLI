@@ -8,7 +8,7 @@ from awsAPIv3 import aws
 from lib_yijun import *
 
 
-def load_asa_config(asa_address, debug=False):
+def load_asa_config(asa_address, asa_jb_ip="20.0.250.10", debug=False):
     import pexpect
 
     # asa_address = "ssh -i 'testDog.pem' admin@3.142.241.180"
@@ -19,7 +19,8 @@ def load_asa_config(asa_address, debug=False):
     conn.sendline("en")
     conn, result, cont = Geneve_reply(conn)
 
-    conn.sendline("copy http://20.0.250.10/geneve.smp disk0:/.")
+    # conn.sendline("copy http://20.0.250.10/geneve.smp disk0:/.")
+    conn.sendline(f"copy http://{asa_jb_ip}/geneve.smp disk0:/.")
     conn, result, cont = Geneve_reply(conn, timeout=120, debug=debug)
 
     conn.sendline("conf term")
@@ -379,16 +380,74 @@ def test_show():
     assert "Last clearing: Never" in res
 
 
+@pytest.mark.addasa
+def test_addASA():
+    cont ='''
+pytest_ASA_New(EC2INSTANCE):
+  image-id: ami-01cab33393210e391
+  instance-type: c5.xlarge
+  key-name: testDog
+  security-group-ids: Test-1-169_SG_Sec_MGMT
+  count: 1
+  subnet-id: Test-1-169_SUB_Sec_MGMT
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.12
+  user-data: file://pytest_day0.txt
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_MGMT
+        - Test-1-169_SG_Sec_MGMT
+    cleanUP: True
+
+pytest_NWInterface_ASA_New(NETWORK_INTERFACE):
+  subnet-id: Test-1-169_SUB_Sec_DATA
+  description: Test-1-169 Data Network for ASA
+  groups: Test-1-169_SG_Sec_DATA
+  private-ip-address: 20.0.1.102
+  action:
+    query_from:
+      - Test-1-169_SG_Sec_DATA
+      - Test-1-169_SUB_Sec_DATA
+    cleanUP: True
+
+pytest_NWInterface_ASA_Bind(BIND):
+  network-interface-id: pytest_NWInterface_ASA_New
+  instance-id: pytest_ASA_New
+  device-index: 1
+  action:
+    bind_to:
+      - pytest_NWInterface_ASA_New
+      - pytest_ASA_New
+    cleanUP: True
+
+'''
+    setting = {}
+    cfg = {"default": {"region": "us-west-1", "output": "yaml"}}
+    cda = {"default": {"aws_access_key_id": "AKIAWMUP3NI4ET7YU6AN", "aws_secret_access_key": "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"}}
+    setting["config"] = cfg
+    setting["credentials"] = cda
+
+    obj = aws(setting, record=False)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+    # asa_ip = obj.fetch_address("Auto_ASA_New")
+    # asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+    #
+    # load_asa_config(asa_address, debug=False)
+
 @pytest.mark.updowngrade
 def test_image_replacement(keyFile):
     print("keyFile::", keyFile)
     return
     obj = aws(setting, record=False)
-    res = obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
+    res1 = obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
     res2 = res = obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
     # backup config in ASA
     cmd = "show run"
-    asa_address = f"ssh -i 'testDog.pem' admin@{res['public_ip']}"
+    asa_address = f"ssh -i 'testDog.pem' admin@{res1['public_ip']}"
     old_config = asa_config(asa_address, cmd)
     assert old_config != ""
     # transfer image to asa
