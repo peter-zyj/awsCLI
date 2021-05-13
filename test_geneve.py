@@ -111,6 +111,8 @@ def setup(request):
     aws_obj.load_deployment(fileName="aws_tb_pytest_west_1.config")
     aws_obj.start_deployment()
 
+    test_Basic_miss_config()
+
     asa_ip = aws_obj.fetch_address("Test-1-169-EC2-ASA")
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
 
@@ -131,10 +133,33 @@ def setup(request):
 
     request.addfinalizer(teardown)
 
+def Basic_miss_config():
+    print("####Basic_miss_config test####")
+    import paramiko
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    jb_ip = aws_obj.fetch_address("Test-1-169-EC2-App-JB")
+
+    ssh.connect(jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+
+    while True:
+        _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'ping 8.8.8.8 -c 1'")
+        stdout.channel.recv_exit_status()
+        resp1 = "".join(stdout.readlines())
+        if not resp1:
+            continue
+        else:
+            break
+
+    assert "100% packet loss" in resp1
+    ssh.close()
 
 @pytest.mark.basic1to2
 def test_Basic_PingGoogle():
-    print("@@@@@@@@@start test:test_Basic_PingGoogle@@@@@@@@@")
+
     import paramiko
 
     ssh = paramiko.SSHClient()
@@ -386,6 +411,55 @@ def test_tcp_counter():
     _, res = asa_config(asa_address, cmd)
 
     assert "Last clearing: Never" in res
+
+@pytest.mark.logserver
+def test_log_server():
+    import paramiko
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    ssh2 = paramiko.SSHClient()
+    ssh2.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    if "aws_obj" in globals():
+        app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
+        asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+    else:
+        aws_obj = aws(record=False)
+        app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
+        asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+
+    ssh.connect(app_jb["public_ip"], username='ubuntu', password='', key_filename="testDog.pem")
+    ssh2.connect(asa_jb["public_ip"], username='ubuntu', password='', key_filename="testDog.pem")
+
+    while True:
+        _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'ping 8.8.8.8 -c 10'")
+        stdout.channel.recv_exit_status()
+        resp1 = "".join(stdout.readlines())
+        if not resp1:
+            continue
+        else:
+            break
+
+    assert "0% packet loss" in resp1
+
+    _, stdout, _ = ssh2.exec_command("sudo systemctl restart syslog")
+    stdout.channel.recv_exit_status()
+    while True:
+        _, stdout, _ = ssh2.exec_command("tail -n 100 /var/log/syslog")
+        stdout.channel.recv_exit_status()
+        resp2 = "".join(stdout.readlines())
+        if not resp2:
+            continue
+        else:
+            break
+
+    assert "8.8.8.8" in resp2
+
+    ssh.close()
+    ssh2.close()
 
 
 @pytest.mark.genevedebug

@@ -1943,11 +1943,16 @@ def test_f():
     print("start timer")
     timer("start")
     print("~~~~~~~1~~~~~~~")
+    test_gg()
     print("~~~~~~~2~~~~~~~")
     time.sleep(10)
 
     timer("stop")
 
+@pytest.mark.gg
+def test_gg():
+    print("ggggg")
+    assert 1 == 2
 
 #....
 def test_auto_config_CleanUp():
