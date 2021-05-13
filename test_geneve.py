@@ -182,7 +182,6 @@ def test_Basic_PingGoogle():
     assert "0% packet loss" in resp1
     ssh.close()
 
-
 @pytest.mark.basic2to1
 def test_Basic_PingApp():
     import paramiko
@@ -277,35 +276,56 @@ def test_PYSERVER(skip_updown):
     #        "ubuntu@54.241.122.28 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
     # os.popen(cmd3).read()
 
-
 @pytest.mark.tcp
 @pytest.mark.tcp23
-def test_TCP23(skip_updown):
-    print("skip_updown:", skip_updown)
-    # asa_jb_address = "ssh -i 'testDog.pem' ubuntu@3.101.116.24"
-    # asa_address = "ssh -i 'testDog.pem' ubuntu@54.241.122.28"
+def test_TCP23():
+
+    if "aws_obj" in globals():
+        app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
+        asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+        asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
+        app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
+
+    else:
+        aws_obj = aws(record=False)
+        app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
+        asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+        asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
+        app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
+
+    app_jb_ip = app_jb["public_ip"]
+    asa_jb_ip = asa_jb["public_ip"]
+    asa_ip = asa["public_ip"]
+    app_ip = app["public_ip"]
+
+    # app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+
+    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+    acl_config = f"access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, acl_config)
 
     # 1. transfer server file
     cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "Pytest_server.py ubuntu@3.101.116.24:/home/ubuntu/."
+           f"Pytest_server.py ubuntu@{app_jb_ip}:/home/ubuntu/."
     os.popen(cmd1).read()
+
     cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@3.101.116.24 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "Pytest_server.py ubuntu@54.241.122.28:/home/ubuntu/.'"
+           f"ubuntu@{app_jb_ip} 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@10.0.1.101:/home/ubuntu/.'"
     os.popen(cmd2).read()
 
     # 2. run server file
     cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@3.101.116.24 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@54.241.122.28 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@10.0.1.101 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
 
     os.popen(cmd3).read()
 
     # 3. test
-    test = """
+    test = f"""
 import socket
 s=socket.socket()
-s.connect(("54.241.122.28",23))
+s.connect(("{app_ip}",23))
 s.send("Yijun is coming".encode())
 msg = s.recv(1024)
 print(msg)
@@ -314,52 +334,114 @@ print(msg)
         f.write(test)
 
     cmd4 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "test.py ubuntu@3.101.116.24:/home/ubuntu/."
+           f"test.py ubuntu@{app_jb_ip}:/home/ubuntu/."
     os.popen(cmd4).read()
 
     cmd5 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@3.101.116.24 'sudo python3 test.py'"
+           f"ubuntu@{app_jb_ip} 'sudo python3 test.py'"
     resp = os.popen(cmd5).read()
 
     assert "[Pytest]TCP:23 is back!" in resp
 
     # # terminate server
     cmd6 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@3.101.116.24 'sudo rm -rf test.py'"
+           f"ubuntu@{app_jb_ip} 'sudo rm -rf test.py'"
     os.popen(cmd6).read()
 
     cmd7 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@3.101.116.24 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@54.241.122.28 \'sudo pkill python3\''"
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@10.0.1.101 \'sudo pkill python3\''"
 
     os.popen(cmd7).read()
 
+    no_acl_config = f"no access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, no_acl_config)
+
+@pytest.fixture()
+def local_run():
+    if "aws_obj" in globals():
+        app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
+        asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+        asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
+        app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
+
+    else:
+        aws_obj = aws(record=False)
+        app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
+        asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+        asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
+        app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
+
+    app_jb_ip = app_jb["public_ip"]
+    asa_jb_ip = asa_jb["public_ip"]
+    asa_ip = asa["public_ip"]
+    app_ip = app["public_ip"]
+
+    yield app_jb_ip, asa_jb_ip, asa_ip, app_ip
+
+@pytest.fixture()
+def acl_config(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+
+    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+    acl_config = f"access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, acl_config)
+
+    yield
+
+    no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, no_acl_config)
 
 @pytest.mark.udp
-@pytest.mark.udp666
-def test_UDP666(skip_updown):
-    print("skip_updown:", skip_updown)
+# def test_UDP666(acl_config):
+def test_UDP666(local_run, acl_config):
+
+    # if "aws_obj" in globals():
+    #     app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
+    #     asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+    #     asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
+    #     app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
+    #
+    # else:
+    #     aws_obj = aws(record=False)
+    #     app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
+    #     asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+    #     asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
+    #     app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
+    #
+    # app_jb_ip = app_jb["public_ip"]
+    # asa_jb_ip = asa_jb["public_ip"]
+    # asa_ip = asa["public_ip"]
+    # app_ip = app["public_ip"]
+
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+
+    # asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+    # acl_config = f"access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
+    # asa_config(asa_address, acl_config)
+
     # 1. transfer server file
     cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "Pytest_server.py ubuntu@3.101.116.24:/home/ubuntu/."
+           f"Pytest_server.py ubuntu@{app_jb_ip}:/home/ubuntu/."
     os.popen(cmd1).read()
+
     cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@3.101.116.24 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "Pytest_server.py ubuntu@54.241.122.28:/home/ubuntu/.'"
+           f"ubuntu@{app_jb_ip} 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@10.0.1.101:/home/ubuntu/.'"
     os.popen(cmd2).read()
 
     # 2. run server file
     cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@3.101.116.24 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@54.241.122.28 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@10.0.1.101 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
 
     os.popen(cmd3).read()
 
     # 3. test
-    test = """
+    test = f"""
 import socket
 s=socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-s.sendto("Yijun is coming".encode(), ("54.241.122.28", 666))
+s.sendto("Yijun is coming".encode(), ("{app_ip}", 666))
 msg = s.recvfrom(1024)
 print(msg[0])
     """
@@ -367,26 +449,28 @@ print(msg[0])
         f.write(test)
 
     cmd4 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "test.py ubuntu@3.101.116.24:/home/ubuntu/."
+           f"test.py ubuntu@{app_jb_ip}:/home/ubuntu/."
     os.popen(cmd4).read()
 
     cmd5 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@3.101.116.24 'sudo python3 test.py'"
+           f"ubuntu@{app_jb_ip} 'sudo python3 test.py'"
     resp = os.popen(cmd5).read()
 
     assert "[Pytest]UDP:666 is back!" in resp
 
     # # terminate server
     cmd6 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@3.101.116.24 'sudo rm -rf test.py'"
+           f"ubuntu@{app_jb_ip} 'sudo rm -rf test.py'"
     os.popen(cmd6).read()
 
     cmd7 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@3.101.116.24 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@54.241.122.28 \'sudo pkill python3\''"
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@10.0.1.101 \'sudo pkill python3\''"
 
     os.popen(cmd7).read()
 
+    # no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
+    # asa_config(asa_address, no_acl_config)
 
 @pytest.mark.counter
 def test_udp_counter():
@@ -401,7 +485,6 @@ def test_udp_counter():
 
     _, res = asa_config(asa_address, cmd2)
     assert "geneve-invalid-udp-checksum" in res
-
 
 @pytest.mark.reset
 def test_tcp_counter():
@@ -492,7 +575,6 @@ def test_log_server():
 
     ssh.close()
     ssh2.close()
-
 
 @pytest.mark.genevedebug
 def test_debug_geneve():

@@ -36,8 +36,6 @@ class aws(object):
 
         if not configuration:
             setting = {}
-            print("!!!!!!!!")
-            print(self.credentials)
             if not self.credentials:
                 credentials = self._credentials_interactive_setup()
                 setting["credentials"] = credentials
@@ -95,6 +93,7 @@ class aws(object):
                 path_config_org = self.home + "/.aws/config"
                 if not os.path.exists(path_config_bk):
                     print("[ERROR]: No ~/.aws/config_auto_bk found!")
+                    print("[Warning]: Maybe 2+ aws object closure with same configure file")
                     traceback.print_stack()
                 else:
                     shutil.move(path_config_bk, path_config_org)
@@ -107,6 +106,7 @@ class aws(object):
                 path_credentials_org = self.home + "/.aws/credentials"
                 if not os.path.exists(path_credentials_bk):
                     print("[ERROR]: No ~/.aws/credentials_auto_bk found!")
+                    print("[Warning]: Maybe 2+ aws object closure with same configure file")
                     traceback.print_stack()
                 else:
                     shutil.move(path_credentials_bk, path_credentials_org)
