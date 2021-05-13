@@ -472,6 +472,66 @@ print(msg[0])
     # no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
     # asa_config(asa_address, no_acl_config)
 
+@pytest.mark.iperfudp
+def test_iperf_udp(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+
+    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+    acl_config = f"access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, acl_config)
+
+    cmd1 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo screen -d -m sudo iperf -s -u'"
+
+    os.popen(cmd1).read()
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo iperf -c {app_jb_ip} -u\''"
+
+    res = os.popen(cmd2).read()
+
+    bd = re.compile(" ([\d.]+?) (?=MBytes)").findall(res)[0]
+    assert float(bd) > 0
+
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo pkill iperf'"
+
+    os.popen(cmd3).read()
+
+    no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, no_acl_config)
+
+@pytest.mark.iperftcp
+def test_iperf_tcp(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+
+    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+    acl_config = f"access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, acl_config)
+
+    cmd1 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo screen -d -m sudo iperf -s'"
+
+    os.popen(cmd1).read()
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo iperf -c {app_jb_ip}\''"
+
+    res = os.popen(cmd2).read()
+
+    bd = re.compile(" ([\d.]+?) (?=MBytes)").findall(res)[0]
+    assert float(bd) > 0
+
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo pkill iperf'"
+
+    os.popen(cmd3).read()
+
+    no_acl_config = f"no access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, no_acl_config)
+
 @pytest.mark.counter
 def test_udp_counter():
 
