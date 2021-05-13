@@ -1949,10 +1949,20 @@ def test_f():
 
     timer("stop")
 
+@pytest.mark.atexit
 @pytest.mark.gg
 def test_gg():
     print("ggggg")
-    assert 1 == 2
+    assert 2 == 2
+
+@pytest.mark.atexit
+@pytest.mark.xfail(raises=KeyError)
+def test_atexit():
+    print("\nqqqqq")
+    atexit.register(test_gg)
+    raise KeyError
+    # atexit.register(test_gg)
+
 
 #....
 def test_auto_config_CleanUp():

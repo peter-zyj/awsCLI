@@ -111,7 +111,7 @@ def setup(request):
     aws_obj.load_deployment(fileName="aws_tb_pytest_west_1.config")
     aws_obj.start_deployment()
 
-    test_Basic_miss_config()
+    Basic_miss_config()
 
     asa_ip = aws_obj.fetch_address("Test-1-169-EC2-ASA")
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
@@ -405,12 +405,44 @@ def test_udp_counter():
 
 @pytest.mark.reset
 def test_tcp_counter():
-    cmd = "show asp drop frame geneve-invalid-udp-checksum"
-    # cmd = "show run"
-    asa_address = "ssh -i 'testDog.pem' admin@18.144.54.235"
-    _, res = asa_config(asa_address, cmd)
 
-    assert "Last clearing: Never" in res
+    if "aws_obj" in globals():
+        app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
+        asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+        asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
+    else:
+        aws_obj = aws(record=False)
+        app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
+        asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+        asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
+
+    app_jb_ip = app_jb["public_ip"]
+    asa_jb_ip = asa_jb["public_ip"]
+    asa_ip = asa["public_ip"]
+    cmd = f"ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo screen -d -m ssh root@{asa_jb_ip}\''"
+
+    os.popen(cmd).read()
+
+    cmd2 = "clear conn address 10.0.1.101"
+    cmd3 = "show asp drop"
+    cmd1 = "clear asp drop"
+
+    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+    _, _ = asa_config(asa_address, cmd1)
+    _, _ = asa_config(asa_address, cmd2)
+
+
+    cmd = f"ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo pkill screen\''"
+
+    os.popen(cmd).read()
+
+    _, res = asa_config(asa_address, cmd3)
+
+    assert "tcp-not-syn" in res
 
 @pytest.mark.logserver
 def test_log_server():
