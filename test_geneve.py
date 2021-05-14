@@ -158,16 +158,15 @@ def Basic_miss_config():
     ssh.close()
 
 @pytest.mark.basic1to2
-def test_Basic_PingGoogle():
+def test_Basic_PingGoogle(local_run):
 
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
     import paramiko
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    jb_ip = aws_obj.fetch_address("Test-1-169-EC2-App-JB")
-
-    ssh.connect(jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+    ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
 
     while True:
         _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
@@ -183,26 +182,22 @@ def test_Basic_PingGoogle():
     ssh.close()
 
 @pytest.mark.basic2to1
-def test_Basic_PingApp():
+def test_Basic_PingApp(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
     import paramiko
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    jb_ip = aws_obj.fetch_address("Test-EC2-App-JB")
-    elip = aws_obj.fetch_address("Test-EC2-App")
-
-    access_list = "access-list geneve extended permit icmp host {jb_ip} host 10.0.1.101"
-
-    asa_ip = aws_obj.fetch_address("Test-EC2-ASA")
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
 
+    access_list = f"access-list geneve extended permit icmp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, access_list)
 
-    ssh.connect(jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+    ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
 
     while True:
-        _, stdout, _ = ssh.exec_command(f"ping {elip} -c 1")
+        _, stdout, _ = ssh.exec_command(f"ping {app_ip} -c 1")
         stdout.channel.recv_exit_status()
         resp1 = "".join(stdout.readlines())
         if not resp1:
@@ -211,6 +206,9 @@ def test_Basic_PingApp():
             break
 
     assert "0% packet loss" in resp1
+
+    no_access_list = f"no access-list geneve extended permit icmp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, no_access_list)
     ssh.close()
 
 @pytest.mark.install
