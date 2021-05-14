@@ -1933,7 +1933,7 @@ def test_manual_termination():
 
     obj.close()
 
-@pytest.mark.yijun_1
+@pytest.mark.yijun_xfail
 @pytest.mark.xfail(raises=ZeroDivisionError)
 def test_f():
     3/2
@@ -1962,6 +1962,19 @@ def test_atexit():
     atexit.register(test_gg)
     raise KeyError
     # atexit.register(test_gg)
+
+
+@pytest.mark.yijun_skip
+def test_function1():
+    print("hello 1")
+    # pytest.skip("我不干了")
+    # pytest.skip("我不干了", allow_module_level=True)  和上面一样，估计进入 test后，就module skip不了了
+    print("hello 2")
+
+@pytest.mark.yijun_skip
+def test_function2():
+    print("hello 3")
+
 
 
 #....

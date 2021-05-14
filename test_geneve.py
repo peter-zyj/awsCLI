@@ -213,7 +213,6 @@ def test_Basic_PingApp():
     assert "0% packet loss" in resp1
     ssh.close()
 
-
 @pytest.mark.install
 def test_apt_install():
     print("Start test_apt_install")
@@ -502,6 +501,38 @@ def test_iperf_udp(local_run):
     no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
 
+@pytest.mark.iperfudpreverse
+def test_iperf_udp_reverse(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+
+    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+    acl_config = f"access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, acl_config)
+
+    cmd1 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo screen -d -m sudo iperf -s -u\''"
+
+    os.popen(cmd1).read()
+
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo iperf -c {app_ip} -u;'"
+
+    res = os.popen(cmd2).read()
+    print("Iperf result:\n", res)
+
+    bd = re.compile(" ([\d.]+?) (?=MBytes)").findall(res)[0]
+    assert float(bd) > 0
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo pkill iperf\''"
+
+    os.popen(cmd3).read()
+
+    no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, no_acl_config)
+
 @pytest.mark.iperftcp
 def test_iperf_tcp(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
@@ -526,6 +557,38 @@ def test_iperf_tcp(local_run):
 
     cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
            f"ubuntu@{app_jb_ip} 'sudo pkill iperf'"
+
+    os.popen(cmd3).read()
+
+    no_acl_config = f"no access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, no_acl_config)
+
+@pytest.mark.iperftcpreverse
+def test_iperf_tcp_reverse(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+
+    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+    acl_config = f"access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, acl_config)
+
+    cmd1 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo screen -d -m sudo iperf -s\''"
+
+    os.popen(cmd1).read()
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo iperf -c {app_ip}'"
+
+    res = os.popen(cmd2).read()
+
+    print("Iperf result:\n", res)
+    bd = re.compile(" ([\d.]+?) (?=MBytes)").findall(res)[0]
+    assert float(bd) > 0
+
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo pkill iperf\''"
 
     os.popen(cmd3).read()
 
