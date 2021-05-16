@@ -4,7 +4,7 @@ import atexit
 
 import pytest
 
-from awsAPIv3 import aws
+from awsAPIv4 import aws
 from lib_yijun import *
 # import awsAPI_v2
 # from awsRES import *
@@ -1932,6 +1932,10 @@ def test_manual_termination():
     obj.manual_termination(name)
 
     obj.close()
+
+@pytest.mark.runman
+def test_runman():
+    aws.runman("aws_cli_runman", "creation")
 
 @pytest.mark.yijun_xfail
 @pytest.mark.xfail(raises=ZeroDivisionError)
