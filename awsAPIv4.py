@@ -539,6 +539,7 @@ class aws(object):
         print_color("[Info][aws][convert]: Select the default AWS config/credentials","green")
         #must have each resource as its own name in creation part of fileName, otherwise, \
         # termination part will not 100% work
+
         if action == "termination":
             tmp_obj = aws(record=False)
             tmp_obj.manual_termination(fileName)
@@ -610,21 +611,31 @@ class aws(object):
             print(e)
             traceback.print_exc(file=sys.stdout)
 
+        import signal
+        def signal_handler(signal, frame):
+            print('RunMan:Someone pressed Ctrl+C!')
+            if tmp_obj:
+                term()
+                tmp_obj.close()
+            sys.exit(0)
+
+        signal.signal(signal.SIGINT, signal_handler)
+
         tmp_obj = aws(record=new_file)
 
         res_dict = collections.defaultdict(lambda: None)
         orphaned = collections.defaultdict(set)
         id_list = []
-        id_list.append(r"igw-\w+")
-        id_list.append(r"vpc-\w+")
-        id_list.append(r"sg-\w+")
-        id_list.append(r"subnet-\w+")
-        id_list.append(r"rtb-\w+")
-        id_list.append(r"i-\w+")
-        id_list.append(r"eni-\w+")
+        id_list.append(r"igw-\w{5,}")
+        id_list.append(r"vpc-\w{5,}")
+        id_list.append(r"sg-\w{5,}")
+        id_list.append(r"subnet-\w{5,}")
+        id_list.append(r"rtb-\w{5,}")
+        id_list.append(r"i-\w{5,}")
+        id_list.append(r"eni-\w{5,}")
         id_list.append(r"arn:aws:elasticloadbalancing:\S+:loadbalancer\S+")
         id_list.append(r"arn:aws:elasticloadbalancing:\S+;targetgroup\S+")
-        id_list.append(r"vpce-\w+")
+        id_list.append(r"vpce-\w{5,}")
 
         # TBD: eni-attach-0cccbaa188cc08d68 [**]
         # TBD: rtbassoc-041c5e6e7959ba458 [**]
@@ -714,7 +725,7 @@ if __name__ == "__main__":
 
     import signal
     def signal_handler(signal, frame):
-        print('Someone pressed Ctrl+C!')
+        print('Main:Someone pressed Ctrl+C!')
         if obj:
             obj.close()
         sys.exit(0)

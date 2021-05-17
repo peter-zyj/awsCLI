@@ -1935,7 +1935,11 @@ def test_manual_termination():
 
 @pytest.mark.runman
 def test_runman():
-    aws.runman("aws_cli_runman", "creation")
+    aws.runman("aws_cli_runman")
+
+@pytest.mark.runmanterm
+def test_runman_term():
+    aws.runman("aws_runman_2021-05-17_07-14-18", "termination")
 
 @pytest.mark.yijun_xfail
 @pytest.mark.xfail(raises=ZeroDivisionError)
