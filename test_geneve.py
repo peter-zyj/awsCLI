@@ -211,17 +211,15 @@ def test_Basic_PingApp(local_run):
     asa_config(asa_address, no_access_list)
     ssh.close()
 
-@pytest.mark.install
-def test_apt_install():
-    print("Start test_apt_install")
+@pytest.mark.install1to2
+def test_apt_install_from_outside(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
     import paramiko
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    jb_ip = aws_obj.fetch_address("Test-EC2-App-JB")
-
-    ssh.connect(jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+    ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
 
     while True:
         _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
@@ -246,6 +244,48 @@ def test_apt_install():
     assert "10.0.1.101" in resp2
 
     ssh.close()
+
+@pytest.mark.install2to1
+def test_apt_install_from_inside(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    import paramiko
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+
+    access_list = f"access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, access_list)
+
+    ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+
+    while True:
+        _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'sudo apt install apache2 -y'")
+        stdout.channel.recv_exit_status()
+        resp1 = "".join(stdout.readlines())
+        if not resp1:
+            continue
+        else:
+            break
+
+    while True:
+        _, stdout2, _ = ssh.exec_command(f"wget http://{app_ip}/index.html; ls index.html")
+
+        stdout2.channel.recv_exit_status()
+        resp2 = "".join(stdout2.readlines())
+        if not resp2:
+            continue
+        else:
+            break
+
+    assert "No such file or directory" not in resp2
+
+    no_access_list = f"no access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
+    asa_config(asa_address, no_access_list)
+    ssh.close()
+
 
 @pytest.mark.pyserver
 def test_PYSERVER(skip_updown):
