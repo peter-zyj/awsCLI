@@ -333,6 +333,12 @@ def test_TCP23_from_outside(local_run):
     os.popen(cmd2).read()
 
     # 2. run server file
+    cmd_k = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@10.0.1.101 \'sudo pkill python3\''"
+
+    os.popen(cmd_k).read()
+
     cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
            f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
            "ubuntu@10.0.1.101 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
@@ -356,7 +362,7 @@ print(msg)
     os.popen(cmd4).read()
 
     cmd5 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           f"ubuntu@{app_jb_ip} 'sudo python3 test.py'"
+           f"ubuntu@{app_jb_ip} 'sudo pkill python3;python3 test.py'"
     resp = os.popen(cmd5).read()
 
     assert "[Pytest]TCP:23 is back!" in resp
@@ -392,7 +398,7 @@ def test_TCP23_from_inside(local_run):
 
     # 2. run server file
     cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           f"ubuntu@{app_jb_ip} 'sudo screen -d -m sudo python3 Pytest_server.py'"
+           f"ubuntu@{app_jb_ip} 'sudo pkill python3;sudo screen -d -m sudo python3 Pytest_server.py'"
 
     os.popen(cmd3).read()
 
@@ -420,7 +426,7 @@ print(msg)
 
     cmd5 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
            f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@10.0.1.101 \'sudo python3 test.py\''"
+           "ubuntu@10.0.1.101 \'sudo pkill python3;python3 test.py\''"
     resp = os.popen(cmd5).read()
 
     assert "[Pytest]TCP:23 is back!" in resp
