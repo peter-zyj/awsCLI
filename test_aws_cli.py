@@ -4,7 +4,7 @@ import atexit
 
 import pytest
 
-from awsAPIv4 import aws
+from awsAPIv3 import aws
 from lib_yijun import *
 # import awsAPI_v2
 # from awsRES import *
@@ -1832,7 +1832,121 @@ Pytest-EC2-INSIDE(EC2INSTANCE):
 
     assert "100% packet loss" in resp2
 
-@pytest.mark.ami
+@pytest.mark.amicopy
+def test_FTD():
+    cont = '''
+Pytest-EC2-FTD(EC2INSTANCE):
+  image-id: Pytest-AMI-FTD
+  instance-type: d2.2xlarge
+  key-name: testDog
+  security-group-ids: Test-1-169_SG_Sec_MGMT
+  count: 1
+  subnet-id: Test-1-169_SUB_Sec_MGMT
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.12
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_MGMT
+        - Test-1-169_SG_Sec_MGMT
+    bind_to:
+        - Pytest-AMI-FTD
+    cleanUP: True
+
+Pytest-AMI-FTD(AMICOPY):
+  source-image-id: ami-06aac12eabffe610d
+  source-region: us-east-2
+  region: us-west-1
+  name: ftdv
+  action:
+    cleanUP: True 
+
+Pytest_SUB_Sec_2_DATA(SUBNET):   
+  vpc-id: Test-1-169_VPC_Sec
+  cidr-block: 20.0.2.0/24
+  availability-zone: {Test-1-169_SUB_App_1_MGMT}
+  action:
+    query_from:
+      - Test-1-169_VPC_Sec
+      - Test-1-169_SUB_App_1_MGMT
+    cleanUP: True
+Pytest_SUB_Sec_3_DATA(SUBNET):
+  vpc-id: Test-1-169_VPC_Sec
+  cidr-block: 20.0.3.0/24
+  availability-zone: {Test-1-169_SUB_App_1_MGMT}
+  action:
+    query_from:
+      - Test-1-169_VPC_Sec
+      - Test-1-169_SUB_App_1_MGMT     
+    cleanUP: True
+
+Pytest_NWInterface_FTD1(NETWORK_INTERFACE):
+  subnet-id: Test-1-169_SUB_Sec_DATA
+  description: pytest Data Network for ASA
+  groups: Test-1-169_SG_Sec_DATA
+  private-ip-address: 20.0.1.102
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_DATA
+        - Test-1-169_SG_Sec_DATA
+    cleanUP: True
+Pytest_NWInterface_FTD2(NETWORK_INTERFACE):
+  subnet-id: Test-1-169_SUB_Sec_2_DATA
+  description: Test-1-169 Data Network for ASA
+  groups: Test-1-169_SG_Sec_DATA_2
+  private-ip-address: 20.0.2.102
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_2_DATA
+        - Test-1-169_SG_Sec_DATA
+    cleanUP: True
+Pytest_NWInterface_FTD3(NETWORK_INTERFACE):
+  subnet-id: Test-1-169_SUB_Sec_3_DATA
+  description: Test-1-169 Data Network for ASA
+  groups: Test-1-169_SG_Sec_DATA_3
+  private-ip-address: 20.0.2.103
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_3_DATA
+        - Test-1-169_SG_Sec_DATA
+    cleanUP: True
+
+Test-1-169_NWInterface_ASA_JB_Bind(BIND):
+  network-interface-id: Test-1-169_NWInterface_ASA_JB
+  instance-id: Test-1-169-EC2-ASA-JB
+  device-index: 1
+  action:
+    bind_to:
+      - Test-1-169_NWInterface_ASA_JB
+      - Test-1-169-EC2-ASA-JB
+    cleanUP: True
+Test-1-169_NWInterface_ASA_JB_Bind(BIND):
+  network-interface-id: Test-1-169_NWInterface_ASA_JB
+  instance-id: Test-1-169-EC2-ASA-JB
+  device-index: 1
+  action:
+    bind_to:
+      - Test-1-169_NWInterface_ASA_JB
+      - Test-1-169-EC2-ASA-JB
+    cleanUP: True
+Test-1-169_NWInterface_ASA_JB_Bind(BIND):
+  network-interface-id: Test-1-169_NWInterface_ASA_JB
+  instance-id: Test-1-169-EC2-ASA-JB
+  device-index: 1
+  action:
+    bind_to:
+      - Test-1-169_NWInterface_ASA_JB
+      - Test-1-169-EC2-ASA-JB
+    cleanUP: True
+'''
+    obj = aws(setting)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+
+
+@pytest.mark.amiBuilder
 def test_AMI_BUILDER():
     cont = '''
 Test-EC2-Ami-Builder(EC2INSTANCE):

@@ -8,7 +8,7 @@ from awsRESv3 import *
 from lib_yijun import print_color
 #version 2: add command cli recording
 #version 3: add blind function to fetch address/id of aws resource
-#version 4: convert log file to exec file with dynamic file
+#version 4: convert log file to exec file with dynamic file(runman)
 class aws(object):
     def __init__(self, configuration=None, record=True, debug=False):
         self.config = False

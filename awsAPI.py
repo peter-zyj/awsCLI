@@ -625,4 +625,9 @@ show tech-support license
 //blind
 aws ec2 describe-instances --filters Name=tag-value,Values=Test-1-169-EC2-App-JB
 
+
+//ami copy:
+aws ec2 copy-image --source-image-id ami-06aac12eabffe610d --source-region us-east-2 --region us-west-1 --name "fmcv"
+aws ec2 deregister-image --image-id ami-4fa54026
+aws ec2 describe-images --image-id ami-08a48fa1c33b1178f
 '''
