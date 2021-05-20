@@ -270,6 +270,7 @@ class SUBNET(resource):
         self.termination = "aws ec2 delete-subnet"
         self.reName = "aws ec2 create-tags"
         self.ID = None
+        self.query_dict = {}
         self._cmd_composition()
 
     def _cmd_composition(self):
@@ -295,8 +296,31 @@ class SUBNET(resource):
                     self.creation_dependency = value
             elif key == "cleanUP":
                 self.keepAlive = False if str(value).lower() == "true" else True
+            elif key == "query_from":
+                if type(value) == str:
+                    tmp = [value]
+                else:
+                    tmp = value
+
+                for item in tmp:
+                    self.query_dict[item] = None
 
     def exec_creation(self, cli_handler):
+        if self.query_dict:
+            self.query_replacement(cli_handler, self.query_dict)
+            for key, value in self.query_dict.items():
+                self.creation = self.creation.replace(key, value)
+
+        tmp_id = re.compile(r"{(subnet-\w+)}").findall(self.creation)
+        if tmp_id:
+            sub_id = tmp_id[0].strip()
+            cmd = f"aws ec2 describe-subnets --subnet-ids {sub_id}"
+            resp = cli_handler.raw_cli_res(cmd)
+            pattern = "AvailabilityZone: (.*)"
+            zone = re.compile(pattern).findall(resp)[0].strip()
+            str_zoneID = f"--availability-zone {zone}"
+            self.creation = re.sub(r"--availability-zone .*?(?=( --|$))", str_zoneID, self.creation)
+
         if self.creation_dependency:
             for res in self.creation_dependency:
                 res_obj = cli_handler.res_deployment[res]
@@ -305,7 +329,7 @@ class SUBNET(resource):
                     str_vpcID = f"--vpc-id {vpc_id}"
                     self.creation = re.sub(r"--vpc-id .*?(?=( --|$))", str_vpcID, self.creation)
 
-                if type(res_obj).__name__ == "SUBNET": #Yijun
+                if type(res_obj).__name__ == "SUBNET" and f"{{{res}}}" in self.creation: #Yijun
                     sub_id = cli_handler.find_id(res)
                     cmd = f"aws ec2 describe-subnets --subnet-ids {sub_id}"
                     resp = cli_handler.raw_cli_res(cmd)
