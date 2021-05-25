@@ -22,7 +22,7 @@ class aws(object):
         self.tobeCleanUp = {}
         self.resCleanUp = not debug
         self.cfgCleanUp = True
-        self.term_seq = []
+        self.term_seq = collections.deque()
         self.close_toggle = False
         self.cliLog = None
 
@@ -47,16 +47,19 @@ class aws(object):
         else:
             self._config_set(configuration)
 
-    def close(self):
-        self._res_clean()
+    def close(self, exec=True):
+        print("\nDebug::close triggered")
+        self._res_clean(exec)
         self._config_restore()
         self.close_toggle = True
 
     def __exit__(self):
+        print("\nDebug::__exit__ triggered")
         if not self.close_toggle:
             self.close()
 
     def __del__(self):
+        print("\nDebug::__del__ triggered")
         if not self.close_toggle:
             self.close()
 
@@ -392,7 +395,7 @@ class aws(object):
         else:
             return self.res_deployment[name].get_id()
 
-    def _res_clean(self):
+    def _res_clean(self, exec=True):
         if self.cliLog:
             try:
                 with open(self.cliLog, "a") as file:
@@ -406,8 +409,20 @@ class aws(object):
         if any(self.res_deployment.values()):
             for name in self._termination_sort():
                 res = self.res_deployment[name]
-                res.exec_termination(self)
-                self.res_deployment[name] = None
+                name_list = res.exec_termination(self, exec)
+                print("debug:name_list=", name_list)
+                if name_list:
+                    idx = 0
+                    for nm in name_list:
+                        tmp = self.term_seq.index(nm)
+                        idx = max(tmp, idx)
+
+                    print("debug:max_idx=",idx)
+                    self.term_seq.insert(idx+1, name)
+                    print("debug:self.term_seq=", self.term_seq)
+
+                else:
+                    self.res_deployment[name] = None
 
     def _termination_sort(self):
         while self.term_seq:
@@ -459,16 +474,17 @@ class aws(object):
                 if "~ TERMINATION ~" not in cmd:
                     cmd = cmd.strip()
                     num = 0
-                    while True:
+                    while num <= 20:
                         resp = self.raw_cli_res(cmd)
-                        if "error occurred" in resp and "no route with destination-cidr-block 0.0.0.0/0" not in resp:
-                            time.sleep(5)
+                        if "does not exist" in resp:
+                            break
+                        elif "error occurred" in resp and "no route with destination-cidr-block 0.0.0.0/0" not in resp:
+                            time.sleep(1)
                             num += 1
+                            print(num)
                         else:
                             break
 
-                        if num >= 50:
-                            break
 
     def fetch_address(self, res_name):
         if res_name not in self.res_deployment:
@@ -542,19 +558,19 @@ if __name__ == "__main__":
     setting["config"] = cfg
     setting["credentials"] = cda
 
-    obj = aws(setting, debug=True)
+    obj = aws(setting, debug=False)
     atexit.register(obj.close)
 
     import signal
     def signal_handler(signal, frame):
         print('Someone pressed Ctrl+C!')
         if obj:
-            obj.close()
+            obj.close(exec=False)
         sys.exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    res = obj.load_deployment("aws.config")
+    res = obj.load_deployment("aws_tb_pytest_west_1_ftd.config")
     obj.start_deployment()
 
     print_color("~~~~~~~~~~~~~~~ Ready to Rock ~~~~~~~~~~~~~~", "pink")

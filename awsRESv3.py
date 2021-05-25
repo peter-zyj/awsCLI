@@ -95,10 +95,10 @@ class INTERNET_GATEWAY(resource):
             self.reName = self.reName.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.reName)
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
@@ -161,7 +161,7 @@ class VPC(resource):
 
             cli_handler.raw_cli_res(self.attach)
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
 
             if self.detach and self.creation_dependency:
@@ -172,13 +172,13 @@ class VPC(resource):
                         igw_id = cli_handler.find_id(igw)
                         self.detach = re.sub(r"\{.*?\}", igw_id, self.detach)
 
-                if not self.keepAlive:
+                if not self.keepAlive and exec:
                     cli_handler.raw_cli_res(self.detach)
                 else:
                     cli_handler.raw_cli_res(self.detach, exec=False)
 
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
@@ -252,10 +252,10 @@ class SECURITY_GROUP(resource):
             rule = rule.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(rule)
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
@@ -344,10 +344,10 @@ class SUBNET(resource):
             self.reName = self.reName.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.reName)
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 while True:
                     res = cli_handler.raw_cli_res(self.termination)
                     if "has dependencies and cannot be deleted" in res:
@@ -404,10 +404,10 @@ class GATEWAY_LOAD_BALANCE(resource):
         res = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'LoadBalancerArn: (.*)').findall(res)[0].strip()
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
@@ -459,10 +459,10 @@ class TARGET_GROUP(resource):
         self.ID = re.compile(r'TargetGroupArn: (.*)').findall(res)[0].strip()
         self.tg_type = re.compile(r'TargetType: (.*)').findall(res)[0].strip()
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
@@ -515,10 +515,10 @@ class LISTENER(resource):
         res = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'ListenerArn: (.*)').findall(res)[0].strip()
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
@@ -583,10 +583,10 @@ class VPCE_SERVICE(resource):
             self.reName = self.reName.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.reName)
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
@@ -660,10 +660,10 @@ class GATEWAY_LOAD_BALANCE_ENDPOINT(resource):
             self.reName = self.reName.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.reName)
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
@@ -738,10 +738,10 @@ class ROUTE(resource):
             else:
                 break
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.rtb_id:
             self.termination = self.termination.replace("self.rtb_id", str(self.rtb_id))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
@@ -822,10 +822,10 @@ class ROUTE_TABLE(resource):
         for rt in self.sub_route:
             rt.exec_creation(cli_handler)
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
@@ -883,10 +883,10 @@ class ROUTE_ASSOCIATE(resource):
         resp = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'AssociationId: (.*)').findall(resp)[0].strip()
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
@@ -969,8 +969,8 @@ class REGISTER(resource):
         self.ID = None
         self.termination = self.creation.replace("register-targets", "deregister-targets")
 
-    def exec_termination(self, cli_handler):
-        if not self.keepAlive:
+    def exec_termination(self, cli_handler, exec=True):
+        if not self.keepAlive and exec:
             cli_handler.raw_cli_res(self.termination)
         else:
             cli_handler.raw_cli_res(self.termination, exec=False)
@@ -1042,10 +1042,10 @@ class AMICOPY(resource):
                 break
             else:
                 print_color(f"[ERR][AMICOPY]:new AMI hit unexpected state: {resp}", "red")
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
@@ -1167,16 +1167,16 @@ class EC2INSTANCE(resource):
                 self._cmd_handler(cli_handler, name)
                 self._file_transfer(cli_handler, name)
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             if self.mainRT_disable:
-                if not self.keepAlive:
+                if not self.keepAlive and exec:
                     cli_handler.raw_cli_res(self.mainRT_disable)
                 else:
                     cli_handler.raw_cli_res(self.mainRT_disable, exec=False)
             for id in self.ID.values():
                 termination = self.termination.replace("self.ID", str(id))
-                if not self.keepAlive:
+                if not self.keepAlive and exec:
                     cli_handler.raw_cli_res(termination)
                 else:
                     cli_handler.raw_cli_res(termination, exec=False)
@@ -1402,17 +1402,23 @@ class NETWORK_INTERFACE(resource):
             self.reName = self.reName.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.reName)
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
 
-            if not self.keepAlive:
-                while True:
+            if not self.keepAlive and exec:
+                num = 0
+                while num < 20:
                     resp = cli_handler.raw_cli_res(self.termination)
-                    if "An error occurred" in resp or "Could not connect to the endpoint URL" in resp:
+                    if "does not exist" in resp:
+                        break
+                    elif "An error occurred" in resp or "Could not connect to the endpoint URL" in resp:
                         time.sleep(5)
+                        num += 1
                     else:
                         break
+                if num >= 20:
+                    return self.creation_dependency
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
 
@@ -1476,10 +1482,10 @@ class BIND(resource):
                 break
         self.ID = re.compile(r'AttachmentId: (.*)').findall(resp)[0].strip()
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
@@ -1546,10 +1552,10 @@ class ELASTIC_IP(resource):
             else:
                 break
 
-    def exec_termination(self, cli_handler):
+    def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
-            if not self.keepAlive:
+            if not self.keepAlive and exec:
                 cli_handler.raw_cli_res(self.detach)
                 cli_handler.raw_cli_res(self.termination)
             else:

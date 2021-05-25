@@ -691,7 +691,6 @@ print(msg[0])
     os.popen(cmd7).read()
 
 
-
 @pytest.mark.iperfudp
 def test_iperf_udp(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
@@ -979,6 +978,39 @@ def test_debug_geneve(local_run):
     conn.close()
     del conn
 
+
+@pytest.mark.metaserver
+def test_meta(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    cmd1 = "no aaa authentication listener http data-interface port www"
+    cmd2 = "nat (data-interface,data-interface) source static gwlb interface destination static interface metadata service http80 http80"
+
+    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+    asa_config(asa_address, cmd1)
+    asa_config(asa_address, cmd2)
+    time.sleep(20)
+    import paramiko
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+
+    while True:
+        _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'ping 8.8.8.8 -c 1'")
+        stdout.channel.recv_exit_status()
+        resp1 = "".join(stdout.readlines())
+        if not resp1:
+            continue
+        else:
+            break
+
+    assert "0% packet loss" in resp1
+    ssh.close()
+
+
+
 @pytest.mark.addasa
 def test_addASA():
     cont ='''
@@ -1036,6 +1068,155 @@ pytest_NWInterface_ASA_Bind(BIND):
     # asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
     #
     # load_asa_config(asa_address, debug=False)
+
+@pytest.mark.addftd
+def test_FTD():
+    cont = '''
+Pytest-EC2-FTD(EC2INSTANCE):
+  image-id: Pytest-AMI-FTD
+  instance-type: d2.2xlarge
+  key-name: testDog
+  security-group-ids: Test-1-169_SG_Sec_MGMT
+  count: 1
+  subnet-id: Test-1-169_SUB_Sec_MGMT
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.12
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_MGMT
+        - Test-1-169_SG_Sec_MGMT
+    bind_to:
+        - Pytest-AMI-FTD
+    cleanUP: True
+
+Pytest-AMI-FTD(AMICOPY):
+  source-image-id: ami-06aac12eabffe610d
+  source-region: us-east-2
+  region: us-west-1
+  name: ftdv
+  action:
+    cleanUP: True 
+
+Pytest_SUB_Sec_2_DATA(SUBNET):   
+  vpc-id: Test-1-169_VPC_Sec
+  cidr-block: 20.0.2.0/24
+  availability-zone: '{Test-1-169_SUB_App_1_MGMT}'
+  action:
+    query_from:
+      - Test-1-169_VPC_Sec
+      - Test-1-169_SUB_App_1_MGMT
+    cleanUP: True
+Pytest_SUB_Sec_3_DATA(SUBNET):
+  vpc-id: Test-1-169_VPC_Sec
+  cidr-block: 20.0.3.0/24
+  availability-zone: '{Test-1-169_SUB_App_1_MGMT}'
+  action:
+    query_from:
+      - Test-1-169_VPC_Sec
+      - Test-1-169_SUB_App_1_MGMT     
+    cleanUP: True
+
+Pytest_NWInterface_FTD1(NETWORK_INTERFACE):
+  subnet-id: Test-1-169_SUB_Sec_DATA
+  description: pytest Data Network for ASA
+  groups: Test-1-169_SG_Sec_DATA
+  private-ip-address: 20.0.1.102
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_DATA
+        - Test-1-169_SG_Sec_DATA
+    cleanUP: True
+Pytest_NWInterface_FTD2(NETWORK_INTERFACE):
+  subnet-id: Pytest_SUB_Sec_2_DATA
+  description: Test-1-169 Data Network2 for ASA
+  groups: Test-1-169_SG_Sec_DATA
+  private-ip-address: 20.0.2.102
+  action:
+    query_from:
+        - Test-1-169_SG_Sec_DATA
+    bind_to:
+        - Pytest_SUB_Sec_2_DATA
+    cleanUP: True
+Pytest_NWInterface_FTD3(NETWORK_INTERFACE):
+  subnet-id: Pytest_SUB_Sec_3_DATA
+  description: Test-1-169 Data Network3 for ASA
+  groups: Test-1-169_SG_Sec_DATA
+  private-ip-address: 20.0.3.102
+  action:
+    query_from:
+        - Test-1-169_SG_Sec_DATA
+    bind_to:
+        - Pytest_SUB_Sec_3_DATA
+    cleanUP: True
+
+Pytest_NWInterface_FTD_1_Bind(BIND):
+  network-interface-id: Pytest_NWInterface_FTD1
+  instance-id: Pytest-EC2-FTD
+  device-index: 1
+  action:
+    bind_to:
+      - Pytest_NWInterface_FTD1
+      - Pytest-EC2-FTD
+    cleanUP: True
+Pytest_NWInterface_FTD_2_Bind(BIND):
+  network-interface-id: Pytest_NWInterface_FTD2
+  instance-id: Pytest-EC2-FTD
+  device-index: 2
+  action:
+    bind_to:
+      - Pytest_NWInterface_FTD2
+      - Pytest-EC2-FTD
+    cleanUP: True
+Pytest_NWInterface_FTD_3_Bind(BIND):
+  network-interface-id: Pytest_NWInterface_FTD3
+  instance-id: Pytest-EC2-FTD
+  device-index: 3
+  action:
+    bind_to:
+      - Pytest_NWInterface_FTD3
+      - Pytest-EC2-FTD
+    cleanUP: True
+'''
+    obj = aws(setting, debug=True)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+@pytest.mark.addfmc
+def test_FMC():
+    cont = '''
+Pytest-EC2-FMC(EC2INSTANCE):
+  image-id: Pytest-AMI-FMC
+  instance-type: d2.2xlarge
+  key-name: testDog
+  security-group-ids: Test-1-169_SG_Sec_MGMT
+  count: 1
+  subnet-id: Test-1-169_SUB_Sec_MGMT
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.13
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_MGMT
+        - Test-1-169_SG_Sec_MGMT
+    bind_to:
+        - Pytest-AMI-FMC
+    cleanUP: True
+
+Pytest-AMI-FMC(AMICOPY):
+  source-image-id: ami-06aac12eabffe610d
+  source-region: us-east-2
+  region: us-west-1
+  name: fmcv
+  action:
+    cleanUP: True 
+'''
+    obj = aws(setting, debug=True)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
 
 @pytest.mark.updowngrade
 def test_image_replacement(keyFile, trs):

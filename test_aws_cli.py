@@ -1835,30 +1835,30 @@ Pytest-EC2-INSIDE(EC2INSTANCE):
 @pytest.mark.amicopy
 def test_FTD():
     cont = '''
-# Pytest-EC2-FTD(EC2INSTANCE):
-#   image-id: Pytest-AMI-FTD
-#   instance-type: d2.2xlarge
-#   key-name: testDog
-#   security-group-ids: Test-1-169_SG_Sec_MGMT
-#   count: 1
-#   subnet-id: Test-1-169_SUB_Sec_MGMT
-#   associate-public-ip-address: None
-#   private-ip-address: 20.0.250.12
-#   action:
-#     query_from:
-#         - Test-1-169_SUB_Sec_MGMT
-#         - Test-1-169_SG_Sec_MGMT
-#     bind_to:
-#         - Pytest-AMI-FTD
-#     cleanUP: True
-# 
-# Pytest-AMI-FTD(AMICOPY):
-#   source-image-id: ami-06aac12eabffe610d
-#   source-region: us-east-2
-#   region: us-west-1
-#   name: ftdv
-#   action:
-#     cleanUP: True 
+Pytest-EC2-FTD(EC2INSTANCE):
+  image-id: Pytest-AMI-FTD
+  instance-type: d2.2xlarge
+  key-name: testDog
+  security-group-ids: Test-1-169_SG_Sec_MGMT
+  count: 1
+  subnet-id: Test-1-169_SUB_Sec_MGMT
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.12
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_MGMT
+        - Test-1-169_SG_Sec_MGMT
+    bind_to:
+        - Pytest-AMI-FTD
+    cleanUP: True
+
+Pytest-AMI-FTD(AMICOPY):
+  source-image-id: ami-06aac12eabffe610d
+  source-region: us-east-2
+  region: us-west-1
+  name: ftdv
+  action:
+    cleanUP: True 
 
 Pytest_SUB_Sec_2_DATA(SUBNET):   
   vpc-id: Test-1-169_VPC_Sec
@@ -1869,83 +1869,116 @@ Pytest_SUB_Sec_2_DATA(SUBNET):
       - Test-1-169_VPC_Sec
       - Test-1-169_SUB_App_1_MGMT
     cleanUP: True
-# Pytest_SUB_Sec_3_DATA(SUBNET):
-#   vpc-id: Test-1-169_VPC_Sec
-#   cidr-block: 20.0.3.0/24
-#   availability-zone: '{Test-1-169_SUB_App_1_MGMT}'
-#   action:
-#     query_from:
-#       - Test-1-169_VPC_Sec
-#       - Test-1-169_SUB_App_1_MGMT     
-#     cleanUP: True
-# 
-# Pytest_NWInterface_FTD1(NETWORK_INTERFACE):
-#   subnet-id: Test-1-169_SUB_Sec_DATA
-#   description: pytest Data Network for ASA
-#   groups: Test-1-169_SG_Sec_DATA
-#   private-ip-address: 20.0.1.102
-#   action:
-#     query_from:
-#         - Test-1-169_SUB_Sec_DATA
-#         - Test-1-169_SG_Sec_DATA
-#     cleanUP: True
-# Pytest_NWInterface_FTD2(NETWORK_INTERFACE):
-#   subnet-id: Pytest_SUB_Sec_2_DATA
-#   description: Test-1-169 Data Network2 for ASA
-#   groups: Test-1-169_SG_Sec_DATA
-#   private-ip-address: 20.0.2.102
-#   action:
-#     query_from:
-#         - Test-1-169_SG_Sec_DATA
-#     bind_to:
-#         - Pytest_SUB_Sec_2_DATA
-#     cleanUP: True
-# Pytest_NWInterface_FTD3(NETWORK_INTERFACE):
-#   subnet-id: Pytest_SUB_Sec_3_DATA
-#   description: Test-1-169 Data Network3 for ASA
-#   groups: Test-1-169_SG_Sec_DATA
-#   private-ip-address: 20.0.2.103
-#   action:
-#     query_from:
-#         - Test-1-169_SG_Sec_DATA
-#     bind_to:
-#         - Pytest_SUB_Sec_3_DATA
-#     cleanUP: True
-# 
-# Pytest_NWInterface_FTD_1_Bind(BIND):
-#   network-interface-id: Pytest_NWInterface_FTD1
-#   instance-id: Pytest-EC2-FTD
-#   device-index: 1
-#   action:
-#     bind_to:
-#       - Pytest_NWInterface_FTD1
-#       - Pytest-EC2-FTD
-#     cleanUP: True
-# Pytest_NWInterface_FTD_2_Bind(BIND):
-#   network-interface-id: Pytest_NWInterface_FTD2
-#   instance-id: Pytest-EC2-FTD
-#   device-index: 1
-#   action:
-#     bind_to:
-#       - Pytest_NWInterface_FTD2
-#       - Pytest-EC2-FTD
-#     cleanUP: True
-# Pytest_NWInterface_FTD_3_Bind(BIND):
-#   network-interface-id: Pytest_NWInterface_FTD3
-#   instance-id: Pytest-EC2-FTD
-#   device-index: 1
-#   action:
-#     bind_to:
-#       - Pytest_NWInterface_FTD3
-#       - Pytest-EC2-FTD
-#     cleanUP: True
+Pytest_SUB_Sec_3_DATA(SUBNET):
+  vpc-id: Test-1-169_VPC_Sec
+  cidr-block: 20.0.3.0/24
+  availability-zone: '{Test-1-169_SUB_App_1_MGMT}'
+  action:
+    query_from:
+      - Test-1-169_VPC_Sec
+      - Test-1-169_SUB_App_1_MGMT     
+    cleanUP: True
+
+Pytest_NWInterface_FTD1(NETWORK_INTERFACE):
+  subnet-id: Test-1-169_SUB_Sec_DATA
+  description: pytest Data Network for ASA
+  groups: Test-1-169_SG_Sec_DATA
+  private-ip-address: 20.0.1.102
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_DATA
+        - Test-1-169_SG_Sec_DATA
+    cleanUP: True
+Pytest_NWInterface_FTD2(NETWORK_INTERFACE):
+  subnet-id: Pytest_SUB_Sec_2_DATA
+  description: Test-1-169 Data Network2 for ASA
+  groups: Test-1-169_SG_Sec_DATA
+  private-ip-address: 20.0.2.102
+  action:
+    query_from:
+        - Test-1-169_SG_Sec_DATA
+    bind_to:
+        - Pytest_SUB_Sec_2_DATA
+    cleanUP: True
+Pytest_NWInterface_FTD3(NETWORK_INTERFACE):
+  subnet-id: Pytest_SUB_Sec_3_DATA
+  description: Test-1-169 Data Network3 for ASA
+  groups: Test-1-169_SG_Sec_DATA
+  private-ip-address: 20.0.3.102
+  action:
+    query_from:
+        - Test-1-169_SG_Sec_DATA
+    bind_to:
+        - Pytest_SUB_Sec_3_DATA
+    cleanUP: True
+
+Pytest_NWInterface_FTD_1_Bind(BIND):
+  network-interface-id: Pytest_NWInterface_FTD1
+  instance-id: Pytest-EC2-FTD
+  device-index: 1
+  action:
+    bind_to:
+      - Pytest_NWInterface_FTD1
+      - Pytest-EC2-FTD
+    cleanUP: True
+Pytest_NWInterface_FTD_2_Bind(BIND):
+  network-interface-id: Pytest_NWInterface_FTD2
+  instance-id: Pytest-EC2-FTD
+  device-index: 2
+  action:
+    bind_to:
+      - Pytest_NWInterface_FTD2
+      - Pytest-EC2-FTD
+    cleanUP: True
+Pytest_NWInterface_FTD_3_Bind(BIND):
+  network-interface-id: Pytest_NWInterface_FTD3
+  instance-id: Pytest-EC2-FTD
+  device-index: 3
+  action:
+    bind_to:
+      - Pytest_NWInterface_FTD3
+      - Pytest-EC2-FTD
+    cleanUP: True
 '''
-    obj = aws(setting)
+    obj = aws(setting, debug=True)
     atexit.register(obj.close)
 
     obj.load_deployment(content=cont)
     obj.start_deployment()
 
+@pytest.mark.fmc
+def test_FMC():
+    cont = '''
+Pytest-EC2-FMC(EC2INSTANCE):
+  image-id: Pytest-AMI-FMC
+  instance-type: d2.2xlarge
+  key-name: testDog
+  security-group-ids: Test-1-169_SG_Sec_MGMT
+  count: 1
+  subnet-id: Test-1-169_SUB_Sec_MGMT
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.13
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_MGMT
+        - Test-1-169_SG_Sec_MGMT
+    bind_to:
+        - Pytest-AMI-FMC
+    cleanUP: True
+
+Pytest-AMI-FMC(AMICOPY):
+  source-image-id: ami-06aac12eabffe610d
+  source-region: us-east-2
+  region: us-west-1
+  name: fmcv
+  action:
+    cleanUP: True 
+'''
+    obj = aws(setting, debug=True)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
 
 
 @pytest.mark.amiBuilder
@@ -2044,7 +2077,7 @@ def test_manual_termination():
     obj = aws(setting, record=False)
     atexit.register(obj.close)
 
-    name = "aws_cli_09-22-55_24-04-2021-west-1"
+    name = "aws_cli_21-23-32_24-05-2021"
     obj.manual_termination(name)
 
     obj.close()
