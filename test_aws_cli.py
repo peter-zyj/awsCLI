@@ -1832,7 +1832,7 @@ Pytest-EC2-INSIDE(EC2INSTANCE):
 
     assert "100% packet loss" in resp2
 
-@pytest.mark.amicopy
+@pytest.mark.ftd
 def test_FTD():
     cont = '''
 Pytest-EC2-FTD(EC2INSTANCE):
@@ -2077,18 +2077,58 @@ def test_manual_termination():
     obj = aws(setting, record=False)
     atexit.register(obj.close)
 
-    name = "aws_cli_21-23-32_24-05-2021"
+    name = "aws_cli_11-47-43_20-05-2021"
     obj.manual_termination(name)
 
     obj.close()
 
-@pytest.mark.runman
-def test_runman():
-    aws.runman("aws_cli_runman")
 
-@pytest.mark.runmanterm
-def test_runman_term():
-    aws.runman("aws_runman_2021-05-17_07-14-18", "termination")
+@pytest.mark.replaceEC2
+def test_FMC():
+    cont = '''
+Del_Pytest-EC2-FMC(TERMINATION):
+  instance-ids: i-0c170c134bf944dc8
+  type: EC2INSTANCE
+
+Pytest-EC2-FMC(EC2INSTANCE):
+  image-id: Pytest-AMI-FMC
+  instance-type: d2.2xlarge
+  key-name: testDog
+  security-group-ids: Test-1-169_SG_Sec_MGMT
+  count: 1
+  subnet-id: Test-1-169_SUB_Sec_MGMT
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.13
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_MGMT
+        - Test-1-169_SG_Sec_MGMT
+    bind_to:
+        - Pytest-AMI-FMC
+        - Del_Pytest-EC2-FMC
+    cleanUP: True
+
+Pytest-AMI-FMC(AMICOPY):
+  source-image-id: ami-06aac12eabffe610d
+  source-region: us-east-2
+  region: us-west-1
+  name: fmcv
+  action:
+    cleanUP: True 
+'''
+    obj = aws(setting, debug=True)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+# @pytest.mark.runman
+# def test_runman():
+#     aws.runman("aws_cli_runman")
+#
+# @pytest.mark.runmanterm
+# def test_runman_term():
+#     aws.runman("aws_runman_2021-05-17_07-14-18", "termination")
 
 @pytest.mark.yijun_xfail
 @pytest.mark.xfail(raises=ZeroDivisionError)

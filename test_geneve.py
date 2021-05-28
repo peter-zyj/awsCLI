@@ -1090,7 +1090,7 @@ Pytest-EC2-FTD(EC2INSTANCE):
     cleanUP: True
 
 Pytest-AMI-FTD(AMICOPY):
-  source-image-id: ami-06aac12eabffe610d
+  source-image-id: ami-05a840fdc851de7cb
   source-region: us-east-2
   region: us-west-1
   name: ftdv
@@ -1177,7 +1177,7 @@ Pytest_NWInterface_FTD_3_Bind(BIND):
       - Pytest-EC2-FTD
     cleanUP: True
 '''
-    obj = aws(setting, debug=True)
+    obj = aws(debug=True)
     atexit.register(obj.close)
 
     obj.load_deployment(content=cont)
@@ -1211,7 +1211,7 @@ Pytest-AMI-FMC(AMICOPY):
   action:
     cleanUP: True 
 '''
-    obj = aws(setting, debug=True)
+    obj = aws(debug=True)
     atexit.register(obj.close)
 
     obj.load_deployment(content=cont)

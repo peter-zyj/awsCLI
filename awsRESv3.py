@@ -10,6 +10,7 @@ from lib_yijun import print_color
 #version 2.1: add GWLB v1 support
 #version 3: add keyword of query_from
 #           add AMICOPY
+#           add TERMINATION
 class resource(object):
     def __init__(self):
         self.creation_dependency = None
@@ -1561,6 +1562,39 @@ class ELASTIC_IP(resource):
             else:
                 cli_handler.raw_cli_res(self.detach, exec=False)
                 cli_handler.raw_cli_res(self.termination, exec=False)
+
+class TERMINATION(object):
+    def __init__(self, tagName, content):
+        self.name = tagName.replace("Del_","")
+        self.raw_yaml = content
+        self.type = None
+        self.id = None
+
+    def _cmd_composition(self):
+        if "type" in self.raw_yaml:
+            self.type = self.raw_yaml["type"]
+
+        if self.type == "EC2INSTANCE":
+            self.creation = "aws ec2 terminate-instances"
+            if "instance-ids" in self.raw_yaml:
+                self.id = self.raw_yaml["instance-ids"].strip()
+                self.creation += "--instance-ids " + self.id
+
+    def exe_creation(self, cli_handler):
+        if not self.id:
+            obj = cli_handler.blind(self.name, self.type)
+            self.id == obj["id"]
+            self.creation += "--instance-ids " + self.id
+
+        while True:
+            resp = cli_handler.raw_cli_res(self.creation)
+            if "An error occurred" in resp:
+                time.sleep(5)
+            else:
+                break
+
+
+
 
 if __name__ == "__main__":
     import paramiko

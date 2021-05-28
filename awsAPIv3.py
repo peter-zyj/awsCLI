@@ -158,7 +158,7 @@ class aws(object):
 
         except KeyError:
             print("[Info]: Use default config setting")
-            traceback.print_exc(file=sys.stdout)
+            # traceback.print_exc(file=sys.stdout)
 
         try:
             if isinstance(setting["credentials"], str):
@@ -176,7 +176,7 @@ class aws(object):
 
         except KeyError:
             print("[Info]: Use default credentials setting")
-            traceback.print_exc(file=sys.stdout)
+            # traceback.print_exc(file=sys.stdout)
 
     def config_check(self):
         if not os.path.exists(self.home + "/.aws/config"):
@@ -374,7 +374,6 @@ class aws(object):
             res_class = eval(resName)
             self.res_deployment[tagName] = res_class(tagName, content)
 
-
     def start_deployment(self):
         if self.cliLog:
             try:
@@ -410,16 +409,16 @@ class aws(object):
             for name in self._termination_sort():
                 res = self.res_deployment[name]
                 name_list = res.exec_termination(self, exec)
-                print("debug:name_list=", name_list)
+                # print("debug:name_list=", name_list)
                 if name_list:
                     idx = 0
                     for nm in name_list:
                         tmp = self.term_seq.index(nm)
                         idx = max(tmp, idx)
 
-                    print("debug:max_idx=",idx)
+                    # print("debug:max_idx=",idx)
                     self.term_seq.insert(idx+1, name)
-                    print("debug:self.term_seq=", self.term_seq)
+                    # print("debug:self.term_seq=", self.term_seq)
 
                 else:
                     self.res_deployment[name] = None
@@ -479,7 +478,7 @@ class aws(object):
                         if "does not exist" in resp:
                             break
                         elif "error occurred" in resp and "no route with destination-cidr-block 0.0.0.0/0" not in resp:
-                            time.sleep(1)
+                            time.sleep(5)
                             num += 1
                             print(num)
                         else:
