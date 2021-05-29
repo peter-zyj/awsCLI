@@ -2082,13 +2082,20 @@ def test_manual_termination():
 
     obj.close()
 
+@pytest.mark.reFTD
+def test_replace_FTD():
+    pass
 
-@pytest.mark.replaceEC2
-def test_FMC():
+@pytest.mark.reFMC
+def test_replace_FMC():
     cont = '''
 Del_Pytest-EC2-FMC(TERMINATION):
-  instance-ids: i-0c170c134bf944dc8
+  id: i-0dfac8028eeb2df7c
   type: EC2INSTANCE
+
+Del_Pytest-AMI-FMC(TERMINATION):
+  id: ami-0d846ab5ee3c4de5a
+  type: AMICOPY
 
 Pytest-EC2-FMC(EC2INSTANCE):
   image-id: Pytest-AMI-FMC
@@ -2109,14 +2116,16 @@ Pytest-EC2-FMC(EC2INSTANCE):
     cleanUP: True
 
 Pytest-AMI-FMC(AMICOPY):
-  source-image-id: ami-06aac12eabffe610d
-  source-region: us-east-2
+  source-image-id: ami-0e8f534eeea33536b
+  source-region: us-west-2
   region: us-west-1
   name: fmcv
   action:
+    bind_to:
+        - Del_Pytest-AMI-FMC
     cleanUP: True 
 '''
-    obj = aws(setting, debug=True)
+    obj = aws(setting, record=False, debug=False)
     atexit.register(obj.close)
 
     obj.load_deployment(content=cont)

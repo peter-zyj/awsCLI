@@ -2,13 +2,14 @@ import os, sys
 import re, time, datetime
 import shutil, atexit
 import subprocess
-import yaml
+import yaml,collections
 
 from lib_yijun import print_color
 
-#version 2: backup all termination/creation cli
-#version 2.1: add GWLB v1 support
-#version 3: add keyword of query_from
+
+# version 2: backup all termination/creation cli
+# version 2.1: add GWLB v1 support
+# version 3: add keyword of query_from
 #           add AMICOPY
 #           add TERMINATION
 class resource(object):
@@ -47,10 +48,10 @@ class resource(object):
     def load_deployment(self, fileName):
         print("No definition of load_deployment in object: ", self.__class__.__name__)
 
-    def exec_creation(self):
+    def exec_creation(self, cli):
         print("No definition of creation in object: ", self.__class__.__name__)
 
-    def exec_termination(self):
+    def exec_termination(self, cli, exe):
         print("No definition of termination in object: ", self.__class__.__name__)
 
     def query_replacement(self, handler, query_dict):
@@ -330,7 +331,7 @@ class SUBNET(resource):
                     str_vpcID = f"--vpc-id {vpc_id}"
                     self.creation = re.sub(r"--vpc-id .*?(?=( --|$))", str_vpcID, self.creation)
 
-                if type(res_obj).__name__ == "SUBNET" and f"{{{res}}}" in self.creation: #Yijun
+                if type(res_obj).__name__ == "SUBNET" and f"{{{res}}}" in self.creation:  # Yijun
                     sub_id = cli_handler.find_id(res)
                     cmd = f"aws ec2 describe-subnets --subnet-ids {sub_id}"
                     resp = cli_handler.raw_cli_res(cmd)
@@ -942,9 +943,9 @@ class REGISTER(resource):
                                 self.creation = self.creation.replace(name, id)
                             elif tg_type == "ip":
                                 temp_replace_str = f"Id={ec2inst_ip} "
-                                pattern = f"Id={name}( |$)" # Yijun:python: [$] == \$
+                                pattern = f"Id={name}( |$)"  # Yijun:python: [$] == \$
                                 # self.creation = self.creation.replace(temp_be_replaced_str, temp_replace_str)
-                                self.creation = re.sub(pattern,temp_replace_str,self.creation).strip()
+                                self.creation = re.sub(pattern, temp_replace_str, self.creation).strip()
 
                 elif type(res_obj).__name__ == "TARGET_GROUP":
                     if not tg_type:
@@ -980,6 +981,7 @@ class REGISTER(resource):
         resp = cli_handler.raw_cli_res(f"aws ec2 describe-instances --instance-ids {id}", show=False)
         pattern = r'PrivateIpAddress: (.*)'
         return re.compile(pattern).findall(resp)[0].strip()
+
 
 class AMICOPY(resource):
     def __init__(self, tagName, content):
@@ -1019,7 +1021,7 @@ class AMICOPY(resource):
 
     def exec_creation(self, cli_handler):
         if self.creation_dependency:
-            print_color(f"[Warning][AMICOPY][Unexpected]:{self.creation_dependency}","yellow")
+            print_color(f"[Warning][AMICOPY][Unexpected]:{self.creation_dependency}", "yellow")
         while True:
             resp = cli_handler.raw_cli_res(self.creation)
             if "An error occurred" in resp:
@@ -1043,6 +1045,7 @@ class AMICOPY(resource):
                 break
             else:
                 print_color(f"[ERR][AMICOPY]:new AMI hit unexpected state: {resp}", "red")
+
     def exec_termination(self, cli_handler, exec=True):
         if self.ID:
             self.termination = self.termination.replace("self.ID", str(self.ID))
@@ -1050,6 +1053,7 @@ class AMICOPY(resource):
                 cli_handler.raw_cli_res(self.termination)
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
+
 
 class EC2INSTANCE(resource):
     def __init__(self, tagName, content):
@@ -1197,7 +1201,8 @@ class EC2INSTANCE(resource):
             pattern3 = f'(?s)VpcId: {vpc_id}.*?InternetGatewayId: (igw-\w+)'
             igw_id = re.compile(pattern3).findall(resp3)[0]
 
-            check_global = cli_handler.raw_cli_res(f"aws ec2 describe-route-tables --route-table-id {rt_id}", show=False)
+            check_global = cli_handler.raw_cli_res(f"aws ec2 describe-route-tables --route-table-id {rt_id}",
+                                                   show=False)
             if igw_id not in check_global:
                 # add IGW route to main
                 self.mainRT_enable = f"aws ec2 create-route --route-table-id {rt_id} --destination-cidr-block 0.0.0.0/0 " \
@@ -1235,7 +1240,7 @@ class EC2INSTANCE(resource):
         for src, dst in self.file_transfer.items():
             command = f"scp -i {keyFile} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
                       f"{src} ubuntu@{publicIP}:{dst}"
-            os.popen(command).read() #//os.popen(command) 文件太大，会truncate， 所以要read（）
+            os.popen(command).read()  # //os.popen(command) 文件太大，会truncate， 所以要read（）
         # ssh = paramiko.SSHClient()
         # ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         # while True:
@@ -1314,7 +1319,6 @@ class EC2INSTANCE(resource):
             print_color(f"[ERROR][EC2INSTANCE][_cmd_handler]: Unsupport command type:{self.cmd}", "red")
         else:
             print_color(f"[ERROR][EC2INSTANCE][_cmd_handler]: Unknown command type:{self.cmd}", "red")
-
 
         ssh.close()
         del ssh
@@ -1491,6 +1495,7 @@ class BIND(resource):
             else:
                 cli_handler.raw_cli_res(self.termination, exec=False)
 
+
 class ELASTIC_IP(resource):
     def __init__(self, tagName, content):
         super().__init__()
@@ -1563,28 +1568,43 @@ class ELASTIC_IP(resource):
                 cli_handler.raw_cli_res(self.detach, exec=False)
                 cli_handler.raw_cli_res(self.termination, exec=False)
 
-class TERMINATION(object):
+
+class TERMINATION(resource):
     def __init__(self, tagName, content):
-        self.name = tagName.replace("Del_","")
+        super().__init__()
+        self.name = tagName.replace("Del_", "")
         self.raw_yaml = content
         self.type = None
         self.id = None
+        self.idKey_dict = collections.defaultdict(dict)
+        self._cmd_composition()
 
     def _cmd_composition(self):
         if "type" in self.raw_yaml:
             self.type = self.raw_yaml["type"]
+        else:
+            print_color("[Error][TERMINATION]No Type Found in the Class", "red")
+            return
 
-        if self.type == "EC2INSTANCE":
-            self.creation = "aws ec2 terminate-instances"
-            if "instance-ids" in self.raw_yaml:
-                self.id = self.raw_yaml["instance-ids"].strip()
-                self.creation += "--instance-ids " + self.id
+        self.idKey_dict["EC2INSTANCE"]["idKey"] = "--instance-ids "
+        self.idKey_dict["EC2INSTANCE"]["cmd"] = "terminate-instances "
+        self.idKey_dict["AMICOPY"]["idKey"] = "--image-id "
+        self.idKey_dict["AMICOPY"]["cmd"] = "deregister-image "
 
-    def exe_creation(self, cli_handler):
+        cmd = self.idKey_dict[self.type]["cmd"]
+        self.creation = f"aws ec2 {cmd}"
+
+        if "id" in self.raw_yaml:
+            self.id = self.raw_yaml["id"].strip()
+            self.creation += self.idKey_dict[self.type]["idKey"] + self.id
+
+    def exec_creation(self, cli_handler):
+        if not self.creation:
+            return
+
         if not self.id:
-            obj = cli_handler.blind(self.name, self.type)
-            self.id == obj["id"]
-            self.creation += "--instance-ids " + self.id
+            self.id = cli_handler.blind(self.name)
+            self.creation += self.idKey_dict[self.type]["idKey"] + self.id
 
         while True:
             resp = cli_handler.raw_cli_res(self.creation)
@@ -1592,9 +1612,6 @@ class TERMINATION(object):
                 time.sleep(5)
             else:
                 break
-
-
-
 
 if __name__ == "__main__":
     import paramiko
@@ -1608,5 +1625,3 @@ if __name__ == "__main__":
     stdin, stdout, stderr = ssh.exec_command('uname -a')
     print(stdout.readlines())
     ssh.close()
-
-
