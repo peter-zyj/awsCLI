@@ -1580,6 +1580,10 @@ class TERMINATION(resource):
         self._cmd_composition()
 
     def _cmd_composition(self):
+        for key, value in self.raw_yaml.items():
+            if key == "action":
+                self._action_handler(value)
+
         if "type" in self.raw_yaml:
             self.type = self.raw_yaml["type"]
         else:
@@ -1590,6 +1594,10 @@ class TERMINATION(resource):
         self.idKey_dict["EC2INSTANCE"]["cmd"] = "terminate-instances "
         self.idKey_dict["AMICOPY"]["idKey"] = "--image-id "
         self.idKey_dict["AMICOPY"]["cmd"] = "deregister-image "
+        self.idKey_dict["NETWORK_INTERFACE"]["idKey"] = "--network-interface-id "
+        self.idKey_dict["NETWORK_INTERFACE"]["cmd"] = "delete-network-interface "
+        self.idKey_dict["SUBNET"]["idKey"] = "--subnet-id "
+        self.idKey_dict["SUBNET"]["cmd"] = "delete-subnet "
 
         cmd = self.idKey_dict[self.type]["cmd"]
         self.creation = f"aws ec2 {cmd}"
@@ -1598,12 +1606,22 @@ class TERMINATION(resource):
             self.id = self.raw_yaml["id"].strip()
             self.creation += self.idKey_dict[self.type]["idKey"] + self.id
 
+    def _action_handler(self, action_yaml):
+        for key, value in action_yaml.items():
+            if key == "bind_to":
+                if type(value) == str:
+                    self.creation_dependency = [value]
+                else:
+                    self.creation_dependency = value
+
     def exec_creation(self, cli_handler):
         if not self.creation:
             return
 
         if not self.id:
             self.id = cli_handler.blind(self.name)
+            if not self.id:
+                return
             self.creation += self.idKey_dict[self.type]["idKey"] + self.id
 
         while True:
