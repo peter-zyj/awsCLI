@@ -2082,6 +2082,7 @@ def test_manual_termination():
 
     obj.close()
 
+@pytest.mark.replace
 @pytest.mark.reFTD
 def test_replace_FTD():
     cont = '''
@@ -2245,6 +2246,7 @@ Pytest_NWInterface_FTD_3_Bind(BIND):
     obj.load_deployment(content=cont)
     obj.start_deployment()
 
+@pytest.mark.replace
 @pytest.mark.reFMC
 def test_replace_FMC():
     cont = '''

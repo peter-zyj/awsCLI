@@ -97,7 +97,7 @@ class aws(object):
                 if not os.path.exists(path_config_bk):
                     print("[ERROR]: No ~/.aws/config_auto_bk found!")
                     print("[Warning]: Maybe 2+ aws object closure with same configure file")
-                    traceback.print_stack()
+                    # traceback.print_stack()
                 else:
                     shutil.move(path_config_bk, path_config_org)
                     # os.popen(f"mv {path_config_bk} {path_config_org}")  python exit-prog kill popen ahead
@@ -110,7 +110,7 @@ class aws(object):
                 if not os.path.exists(path_credentials_bk):
                     print("[ERROR]: No ~/.aws/credentials_auto_bk found!")
                     print("[Warning]: Maybe 2+ aws object closure with same configure file")
-                    traceback.print_stack()
+                    # traceback.print_stack()
                 else:
                     shutil.move(path_credentials_bk, path_credentials_org)
                     # os.popen(f"mv {path_credentials_bk} {path_credentials_org}")python exit-prog kill popen ahead
