@@ -133,6 +133,7 @@ def setup(request):
 
     request.addfinalizer(teardown)
 
+
 def Basic_miss_config():
     print("####Basic_miss_config test####")
     import paramiko
@@ -157,9 +158,9 @@ def Basic_miss_config():
     assert "100% packet loss" in resp1
     ssh.close()
 
+
 @pytest.mark.basic1to2
 def test_Basic_PingGoogle(local_run):
-
     app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
     import paramiko
 
@@ -180,6 +181,7 @@ def test_Basic_PingGoogle(local_run):
 
     assert "0% packet loss" in resp1
     ssh.close()
+
 
 @pytest.mark.basic2to1
 def test_Basic_PingApp(local_run):
@@ -210,6 +212,7 @@ def test_Basic_PingApp(local_run):
     no_access_list = f"no access-list geneve extended permit icmp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_access_list)
     ssh.close()
+
 
 @pytest.mark.install1to2
 def test_apt_install_from_outside(local_run):
@@ -244,6 +247,7 @@ def test_apt_install_from_outside(local_run):
     assert "10.0.1.101" in resp2
 
     ssh.close()
+
 
 @pytest.mark.install2to1
 def test_apt_install_from_inside(local_run):
@@ -313,6 +317,7 @@ def test_PYSERVER(skip_updown):
     #        "ubuntu@54.241.122.28 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
     # os.popen(cmd3).read()
 
+
 @pytest.mark.tcp
 @pytest.mark.tcp1to2
 def test_TCP23_from_outside(local_run):
@@ -334,8 +339,8 @@ def test_TCP23_from_outside(local_run):
 
     # 2. run server file
     cmd_k = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@10.0.1.101 \'sudo pkill python3\''"
+            f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+            "ubuntu@10.0.1.101 \'sudo pkill python3\''"
 
     os.popen(cmd_k).read()
 
@@ -381,6 +386,7 @@ print(msg)
     no_acl_config = f"no access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
 
+
 @pytest.mark.tcp
 @pytest.mark.tcp2to1
 def test_TCP23_from_inside(local_run):
@@ -419,8 +425,8 @@ print(msg)
     os.popen(cmd4).read()
 
     cmd4_2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           f"ubuntu@{app_jb_ip} 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "test.py ubuntu@10.0.1.101:/home/ubuntu/.'"
+             f"ubuntu@{app_jb_ip} 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+             "test.py ubuntu@10.0.1.101:/home/ubuntu/.'"
 
     os.popen(cmd4_2).read()
 
@@ -437,14 +443,15 @@ print(msg)
     os.popen(cmd6).read()
 
     cmd6_2 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-            f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-            "ubuntu@10.0.1.101 \'sudo rm -rf test.py\''"
+             f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+             "ubuntu@10.0.1.101 \'sudo rm -rf test.py\''"
     os.popen(cmd6_2).read()
 
     cmd7 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
            f"ubuntu@{app_jb_ip} 'sudo pkill python3'"
 
     os.popen(cmd7).read()
+
 
 @pytest.fixture()
 def local_run():
@@ -469,6 +476,7 @@ def local_run():
     yield app_jb_ip, asa_jb_ip, asa_ip, app_ip
     aws_obj.close()
 
+
 @pytest.fixture()
 def acl_config(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
@@ -482,10 +490,10 @@ def acl_config(local_run):
     no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
 
+
 @pytest.mark.udpYijun
 # def test_UDP666(acl_config):
 def test_UDP666(local_run, acl_config):
-
     # if "aws_obj" in globals():
     #     app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
     #     asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
@@ -562,9 +570,9 @@ print(msg[0])
     # no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
     # asa_config(asa_address, no_acl_config)
 
+
 @pytest.mark.udp1to2
 def test_UDP_from_inside(local_run):
-
     app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
 
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
@@ -583,8 +591,8 @@ def test_UDP_from_inside(local_run):
 
     # 2. run server file
     cmd_k = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@10.0.1.101 \'sudo pkill python3\''"
+            f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+            "ubuntu@10.0.1.101 \'sudo pkill python3\''"
 
     os.popen(cmd_k).read()
     cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
@@ -628,9 +636,9 @@ print(msg[0])
     no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
 
+
 @pytest.mark.udp2to1
 def test_UDP_from_outside(local_run):
-
     app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
 
     # 1. transfer server file
@@ -681,8 +689,8 @@ print(msg[0])
     os.popen(cmd6).read()
 
     cmd6_2 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-            f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-            "ubuntu@10.0.1.101 \'sudo rm -rf test.py\''"
+             f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+             "ubuntu@10.0.1.101 \'sudo rm -rf test.py\''"
     os.popen(cmd6_2).read()
 
     cmd7 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
@@ -721,6 +729,7 @@ def test_iperf_udp(local_run):
     no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
 
+
 @pytest.mark.iperfudpreverse
 def test_iperf_udp_reverse(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
@@ -734,7 +743,6 @@ def test_iperf_udp_reverse(local_run):
            f"ubuntu@10.0.1.101 \'sudo screen -d -m sudo iperf -s -u\''"
 
     os.popen(cmd1).read()
-
 
     cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
            f"ubuntu@{app_jb_ip} 'sudo iperf -c {app_ip} -u;'"
@@ -752,6 +760,7 @@ def test_iperf_udp_reverse(local_run):
 
     no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
+
 
 @pytest.mark.iperftcp
 def test_iperf_tcp(local_run):
@@ -782,6 +791,7 @@ def test_iperf_tcp(local_run):
 
     no_acl_config = f"no access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
+
 
 @pytest.mark.iperftcpreverse
 def test_iperf_tcp_reverse(local_run):
@@ -815,6 +825,7 @@ def test_iperf_tcp_reverse(local_run):
     no_acl_config = f"no access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
 
+
 @pytest.mark.counter
 def test_udp_counter(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
@@ -824,18 +835,19 @@ def test_udp_counter(local_run):
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
     asa_config(asa_address, cmd1)
 
-    send(IP(dst="20.0.1.101") / UDP(sport=20001, dport=6081, chksum=0)/b'\x08\x00\x08')
+    send(IP(dst="20.0.1.101") / UDP(sport=20001, dport=6081, chksum=0) / b'\x08\x00\x08')
 
     _, res = asa_config(asa_address, cmd2)
     assert "geneve-invalid-udp-checksum" in res
+
 
 @pytest.mark.reset
 def test_tcp_counter(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
 
     cmd = f"ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           f"ubuntu@10.0.1.101 \'sudo screen -d -m ssh root@{asa_jb_ip}\''"
+          f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+          f"ubuntu@10.0.1.101 \'sudo screen -d -m ssh root@{asa_jb_ip}\''"
 
     os.popen(cmd).read()
 
@@ -847,16 +859,16 @@ def test_tcp_counter(local_run):
     asa_config(asa_address, cmd1)
     asa_config(asa_address, cmd2)
 
-
     cmd = f"ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           f"ubuntu@10.0.1.101 \'sudo pkill screen\''"
+          f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+          f"ubuntu@10.0.1.101 \'sudo pkill screen\''"
 
     os.popen(cmd).read()
 
     _, res = asa_config(asa_address, cmd3)
 
     assert "tcp-not-syn" in res
+
 
 @pytest.mark.logserver
 def test_log_server(local_run):
@@ -868,7 +880,6 @@ def test_log_server(local_run):
 
     ssh2 = paramiko.SSHClient()
     ssh2.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
 
     ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
     ssh2.connect(asa_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
@@ -900,6 +911,7 @@ def test_log_server(local_run):
 
     ssh.close()
     ssh2.close()
+
 
 @pytest.mark.genevedebug
 def test_debug_geneve(local_run):
@@ -1010,10 +1022,36 @@ def test_meta(local_run):
     ssh.close()
 
 
+@pytest.mark.statistics
+def test_stats(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    cmd1 = "show interface vni 1"
+    cmd2 = "show nve 1"
+    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+
+    _, cont1_1 = asa_config(asa_address, cmd1)
+    _, cont2_1 = asa_config(asa_address, cmd2)
+    p1 = "(.*) packets input"
+    p2 = "(.*) packets output"
+
+    output_cmd1_1 = int(re.compile(p1).findall(cont1_1)[0])
+    output_cmd2_1 = int(re.compile(p2).findall(cont2_1)[0])
+
+    test_Basic_PingGoogle(local_run)
+
+    _, cont1_2 = asa_config(asa_address, cmd1)
+    _, cont2_2 = asa_config(asa_address, cmd2)
+
+    output_cmd1_2 = int(re.compile(p1).findall(cont1_2)[0])
+    output_cmd2_2 = int(re.compile(p2).findall(cont2_2)[0])
+
+    assert output_cmd1_2 > output_cmd1_1
+    assert output_cmd2_2 > output_cmd2_1
+
 
 @pytest.mark.addasa
 def test_addASA():
-    cont ='''
+    cont = '''
 pytest_ASA_New(EC2INSTANCE):
   image-id: ami-01cab33393210e391
   instance-type: c5.xlarge
@@ -1054,7 +1092,8 @@ pytest_NWInterface_ASA_Bind(BIND):
 '''
     setting = {}
     cfg = {"default": {"region": "us-west-1", "output": "yaml"}}
-    cda = {"default": {"aws_access_key_id": "AKIAWMUP3NI4ET7YU6AN", "aws_secret_access_key": "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"}}
+    cda = {"default": {"aws_access_key_id": "AKIAWMUP3NI4ET7YU6AN",
+                       "aws_secret_access_key": "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"}}
     setting["config"] = cfg
     setting["credentials"] = cda
 
@@ -1068,6 +1107,7 @@ pytest_NWInterface_ASA_Bind(BIND):
     # asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
     #
     # load_asa_config(asa_address, debug=False)
+
 
 @pytest.mark.addftd
 def test_FTD():
@@ -1183,6 +1223,7 @@ Pytest_NWInterface_FTD_3_Bind(BIND):
     obj.load_deployment(content=cont)
     obj.start_deployment()
 
+
 @pytest.mark.addfmc
 def test_FMC():
     cont = '''
@@ -1234,7 +1275,7 @@ def test_image_replacement(keyFile, trs):
     # transfer image to asa
     new_image = "geneve_new.smp"
     command = f"scp -i {keyFile} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-             f"{new_image} ubuntu@{res2['public_ip']}:/var/www/html/."
+              f"{new_image} ubuntu@{res2['public_ip']}:/var/www/html/."
 
     timer("start")
     os.popen(command).read()
@@ -1257,7 +1298,7 @@ def test_image_replacement(keyFile, trs):
     conn.sendline("show version")
     conn, result, cont = Geneve_reply(conn, timeout=120, debug=debug)
 
-    print("Old Version::",cont)
+    print("Old Version::", cont)
 
     # reload asa
     conn.sendline("boot system disk0:/geneve_new.smp")
@@ -1270,7 +1311,6 @@ def test_image_replacement(keyFile, trs):
     conn.close();
     del conn
 
-
     # print new version
     conn = pexpect.spawn(asa_address)
     conn, result, cont = Geneve_reply(conn)
@@ -1281,7 +1321,7 @@ def test_image_replacement(keyFile, trs):
     conn.sendline("show version")
     conn, result, cont = Geneve_reply(conn, timeout=120, debug=debug)
 
-    print("New Version::",cont)
+    print("New Version::", cont)
 
     # config is same as before/after
     cmd = "show run"
@@ -1292,7 +1332,6 @@ def test_image_replacement(keyFile, trs):
     assert temp == old_config
 
     pass
-
 
 
 if __name__ == '__main__':

@@ -2342,7 +2342,14 @@ def test_function1():
 def test_function2():
     print("hello 3")
 
+@pytest.mark.func_yijun
+def test_func1():
+    print("\nfunc1")
 
+@pytest.mark.func_yijun
+def test_func2():
+    test_func1()
+    print("\nfunc2")
 
 #....
 def test_auto_config_CleanUp():
