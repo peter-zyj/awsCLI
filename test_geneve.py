@@ -1154,6 +1154,7 @@ Pytest_SUB_Sec_2_DATA(SUBNET):
       - Test-1-169_SUB_App_1_MGMT
     bind_to:
       - Del_Pytest_SUB_Sec_2_DATA
+      - Pytest_SUB_Sec_3_DATA
     cleanUP: True
 Pytest_SUB_Sec_3_DATA(SUBNET):
   vpc-id: Test-1-169_VPC_Sec
@@ -1164,7 +1165,7 @@ Pytest_SUB_Sec_3_DATA(SUBNET):
       - Test-1-169_VPC_Sec
       - Test-1-169_SUB_App_1_MGMT  
     bind_to:
-      - Del_Pytest_SUB_Sec_3_DATA   
+      - Del_Pytest_SUB_Sec_3_DATA 
     cleanUP: True
 
 Pytest_NWInterface_FTD1(NETWORK_INTERFACE):
@@ -1177,7 +1178,7 @@ Pytest_NWInterface_FTD1(NETWORK_INTERFACE):
         - Test-1-169_SUB_Sec_DATA
         - Test-1-169_SG_Sec_DATA
     bind_to:
-      - Del_Pytest_NWInterface_FTD1
+        - Del_Pytest_NWInterface_FTD1
     cleanUP: True
 Pytest_NWInterface_FTD2(NETWORK_INTERFACE):
   subnet-id: Pytest_SUB_Sec_2_DATA
@@ -1212,6 +1213,7 @@ Pytest_NWInterface_FTD_1_Bind(BIND):
     bind_to:
       - Pytest_NWInterface_FTD1
       - Pytest-EC2-FTD
+      - Pytest_NWInterface_FTD_3_Bind
     cleanUP: True
 Pytest_NWInterface_FTD_2_Bind(BIND):
   network-interface-id: Pytest_NWInterface_FTD2
@@ -1221,6 +1223,7 @@ Pytest_NWInterface_FTD_2_Bind(BIND):
     bind_to:
       - Pytest_NWInterface_FTD2
       - Pytest-EC2-FTD
+      - Pytest_NWInterface_FTD_1_Bind
     cleanUP: True
 Pytest_NWInterface_FTD_3_Bind(BIND):
   network-interface-id: Pytest_NWInterface_FTD3
@@ -1231,13 +1234,12 @@ Pytest_NWInterface_FTD_3_Bind(BIND):
       - Pytest_NWInterface_FTD3
       - Pytest-EC2-FTD
     cleanUP: True
-    '''
-    obj = aws(setting, record=False, debug=True)
+'''
+    obj = aws(record=False, debug=True)
     atexit.register(obj.close)
 
     obj.load_deployment(content=cont)
     obj.start_deployment()
-
 
 @pytest.mark.replace
 @pytest.mark.reFMC
@@ -1279,11 +1281,72 @@ Pytest-AMI-FMC(AMICOPY):
         - Del_Pytest-AMI-FMC
     cleanUP: True 
 '''
-    obj = aws(setting, record=False, debug=True)
+    obj = aws(record=False, debug=True)
     atexit.register(obj.close)
 
     obj.load_deployment(content=cont)
     obj.start_deployment()
+
+
+@pytest.mark.reASA
+def test_replace_ASA():
+    cont = '''
+Del_pytest_ASA_New(TERMINATION):
+  type: EC2INSTANCE
+
+Del_pytest_NWInterface_ASA_New(TERMINATION):
+  type: NETWORK_INTERFACE
+  action:
+    bind_to:
+        - Del_pytest_ASA_New
+        
+pytest_ASA_New(EC2INSTANCE):
+  image-id: ami-01cab33393210e391
+  instance-type: c5.xlarge
+  key-name: testDog
+  security-group-ids: Test-1-169_SG_Sec_MGMT
+  count: 1
+  subnet-id: Test-1-169_SUB_Sec_MGMT
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.12
+  user-data: file://pytest_day0.txt
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_MGMT
+        - Test-1-169_SG_Sec_MGMT
+    bind_to:
+        - Del_pytest_ASA_New
+    cleanUP: True
+
+pytest_NWInterface_ASA_New(NETWORK_INTERFACE):
+  subnet-id: Test-1-169_SUB_Sec_DATA
+  description: Test-1-169 Data Network for ASA
+  groups: Test-1-169_SG_Sec_DATA
+  private-ip-address: 20.0.1.102
+  action:
+    query_from:
+      - Test-1-169_SG_Sec_DATA
+      - Test-1-169_SUB_Sec_DATA
+    bind_to:
+        - Del_pytest_NWInterface_ASA_New
+    cleanUP: True
+
+pytest_NWInterface_ASA_Bind(BIND):
+  network-interface-id: pytest_NWInterface_ASA_New
+  instance-id: pytest_ASA_New
+  device-index: 1
+  action:
+    bind_to:
+      - pytest_NWInterface_ASA_New
+      - pytest_ASA_New
+    cleanUP: True
+'''
+    obj = aws(record=False)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
 
 @pytest.mark.addasa
 def test_addASA():

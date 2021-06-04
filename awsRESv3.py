@@ -1619,10 +1619,18 @@ class TERMINATION(resource):
             return
 
         if not self.id:
-            self.id = cli_handler.blind(self.name)
+            self.id = cli_handler.blind(self.name, fullList=True)
             if not self.id:
                 return
-            self.creation += self.idKey_dict[self.type]["idKey"] + self.id
+
+            self.creation += self.idKey_dict[self.type]["idKey"] + "@id@;"
+            tmp_cmd = ""
+            for id in self.id:
+                id = id.strip()
+                tmp_cmd += self.creation.replace("@id@", id)
+
+            self.creation = tmp_cmd
+
 
         while True:
             resp = cli_handler.raw_cli_res(self.creation)

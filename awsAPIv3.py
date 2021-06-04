@@ -501,19 +501,22 @@ class aws(object):
         return None
 
     # @staticmethod
-    def blind(self, resName, typeName=None):
+    def blind(self, resName, typeName=None, fullList=False):
         if not typeName:
             cmd = f"aws ec2 describe-tags --filters Name=tag-value,Values={resName}"
             res = self.raw_cli_res(cmd)
             pattern = r"ResourceId: (.*)"
             try:
-                id = re.compile(pattern).findall(res)[0].strip()
+                if not fullList:
+                    id = re.compile(pattern).findall(res)[0].strip()
+                else:
+                    id = re.compile(pattern).findall(res)
             except IndexError:
                 print_color(f"[Warning][aws][blind] not exist:{resName}", "yellow")
                 return None
             else:
                 return id
-        else:
+        else: #fullList not supported
             result = {}
             try:
                 if typeName == "EC2INSTANCE":
