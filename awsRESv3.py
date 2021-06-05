@@ -55,9 +55,13 @@ class resource(object):
         print("No definition of termination in object: ", self.__class__.__name__)
 
     def query_replacement(self, handler, query_dict):
-        for key, _ in query_dict.items():
-            id = handler.blind(key)
-            query_dict[key] = id
+        for key, value in query_dict.items():
+            if value:
+                result = handler.blind(key, typeName=value)
+                query_dict[key] = {value:result}
+            else:
+                id = handler.blind(key)
+                query_dict[key] = id
 
 
 class INTERNET_GATEWAY(resource):
@@ -902,6 +906,7 @@ class REGISTER(resource):
         self.creation = "aws elbv2 register-targets"
         self.termination = "aws elbv2 deregister-targets"
         self.ID = None
+        self.query_dict = {}
         self._cmd_composition()
 
     def _cmd_composition(self):
@@ -925,8 +930,31 @@ class REGISTER(resource):
                     self.creation_dependency = value
             elif key == "cleanUP":
                 self.keepAlive = False if str(value).lower() == "true" else True
+            elif key == "query_from":
+                if type(value) == str:
+                    tmp = [value]
+                else:
+                    tmp = value
+
+                for item in tmp:
+                    if self.raw_yaml["target-group-arn"] == item:
+                        self.query_dict[item] = "TARGET_GROUP"
+                    elif self.raw_yaml["targets"] == "Id="+item:
+                        self.query_dict[item] = "NETWORK_INTERFACE"
+                    else:
+                        self.query_dict[item] = None
 
     def exec_creation(self, cli_handler):
+        if self.query_dict:
+            self.query_replacement(cli_handler, self.query_dict)
+            for key, value in self.query_dict.items():
+                if type(value).__name__ == "str":
+                    self.creation = self.creation.replace(key, value)
+                elif "TARGET_GROUP" in value:
+                    self.creation = self.creation.replace(key, value["TARGET_GROUP"]["id"])
+                elif "NETWORK_INTERFACE" in value:
+                    self.creation = self.creation.replace(key, value["NETWORK_INTERFACE"]["private_ip"])
+
         if self.creation_dependency:
             tg_type = None
             for res in self.creation_dependency:
@@ -981,6 +1009,25 @@ class REGISTER(resource):
         resp = cli_handler.raw_cli_res(f"aws ec2 describe-instances --instance-ids {id}", show=False)
         pattern = r'PrivateIpAddress: (.*)'
         return re.compile(pattern).findall(resp)[0].strip()
+
+    def idp_cmd_composition(self, action, cli_handler):
+        creation = self.creation
+        if self.query_dict:
+            self.query_replacement(cli_handler, self.query_dict)
+            for key, value in self.query_dict.items():
+                if type(value).__name__ == "str":
+                    creation = creation.replace(key, value)
+                elif "TARGET_GROUP" in value:
+                    creation = creation.replace(key, value["TARGET_GROUP"]["id"])
+                elif "NETWORK_INTERFACE" in value:
+                    creation = creation.replace(key, value["NETWORK_INTERFACE"]["private_ip"])
+
+        if action == "creation":
+            return creation
+        elif action == "termination":
+            termination = creation.replace("register-targets", "deregister-targets")
+            return termination
+
 
 
 class AMICOPY(resource):
@@ -1577,6 +1624,7 @@ class TERMINATION(resource):
         self.type = None
         self.id = None
         self.idKey_dict = collections.defaultdict(dict)
+        self.creation = None
         self._cmd_composition()
 
     def _cmd_composition(self):
@@ -1590,21 +1638,24 @@ class TERMINATION(resource):
             print_color("[Error][TERMINATION]No Type Found in the Class", "red")
             return
 
-        self.idKey_dict["EC2INSTANCE"]["idKey"] = "--instance-ids "
-        self.idKey_dict["EC2INSTANCE"]["cmd"] = "terminate-instances "
-        self.idKey_dict["AMICOPY"]["idKey"] = "--image-id "
-        self.idKey_dict["AMICOPY"]["cmd"] = "deregister-image "
-        self.idKey_dict["NETWORK_INTERFACE"]["idKey"] = "--network-interface-id "
-        self.idKey_dict["NETWORK_INTERFACE"]["cmd"] = "delete-network-interface "
-        self.idKey_dict["SUBNET"]["idKey"] = "--subnet-id "
-        self.idKey_dict["SUBNET"]["cmd"] = "delete-subnet "
+        if self.type == "REGISTER":
+            self.creation = "TBD"
+        else:
+            self.idKey_dict["EC2INSTANCE"]["idKey"] = "--instance-ids "
+            self.idKey_dict["EC2INSTANCE"]["cmd"] = "terminate-instances "
+            self.idKey_dict["AMICOPY"]["idKey"] = "--image-id "
+            self.idKey_dict["AMICOPY"]["cmd"] = "deregister-image "
+            self.idKey_dict["NETWORK_INTERFACE"]["idKey"] = "--network-interface-id "
+            self.idKey_dict["NETWORK_INTERFACE"]["cmd"] = "delete-network-interface "
+            self.idKey_dict["SUBNET"]["idKey"] = "--subnet-id "
+            self.idKey_dict["SUBNET"]["cmd"] = "delete-subnet "
 
-        cmd = self.idKey_dict[self.type]["cmd"]
-        self.creation = f"aws ec2 {cmd}"
+            cmd = self.idKey_dict[self.type]["cmd"]
+            self.creation = f"aws ec2 {cmd}"
 
-        if "id" in self.raw_yaml:
-            self.id = self.raw_yaml["id"].strip()
-            self.creation += self.idKey_dict[self.type]["idKey"] + self.id
+            if "id" in self.raw_yaml:
+                self.id = self.raw_yaml["id"].strip()
+                self.creation += self.idKey_dict[self.type]["idKey"] + self.id
 
     def _action_handler(self, action_yaml):
         for key, value in action_yaml.items():
@@ -1618,7 +1669,11 @@ class TERMINATION(resource):
         if not self.creation:
             return
 
-        if not self.id:
+        if self.type == "REGISTER":
+            del self.raw_yaml["type"]
+            obj = REGISTER(self.name, self.raw_yaml)
+            self.creation = obj.idp_cmd_composition("termination", cli_handler)
+        elif not self.id:
             self.id = cli_handler.blind(self.name, fullList=True)
             if not self.id:
                 return

@@ -163,7 +163,7 @@ def Basic_miss_config():
 
 @pytest.mark.basic1to2
 def test_Basic_PingGoogle(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
     import paramiko
 
     ssh = paramiko.SSHClient()
@@ -187,7 +187,7 @@ def test_Basic_PingGoogle(local_run):
 
 @pytest.mark.basic2to1
 def test_Basic_PingApp(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
     import paramiko
 
     ssh = paramiko.SSHClient()
@@ -218,7 +218,7 @@ def test_Basic_PingApp(local_run):
 
 @pytest.mark.install1to2
 def test_apt_install_from_outside(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
     import paramiko
 
     ssh = paramiko.SSHClient()
@@ -253,7 +253,7 @@ def test_apt_install_from_outside(local_run):
 
 @pytest.mark.install2to1
 def test_apt_install_from_inside(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
     import paramiko
 
     ssh = paramiko.SSHClient()
@@ -323,7 +323,7 @@ def test_PYSERVER(skip_updown):
 @pytest.mark.tcp
 @pytest.mark.tcp1to2
 def test_TCP23_from_outside(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
 
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
     acl_config = f"access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
@@ -392,7 +392,7 @@ print(msg)
 @pytest.mark.tcp
 @pytest.mark.tcp2to1
 def test_TCP23_from_inside(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
 
     # 1. transfer server file
     cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
@@ -457,31 +457,31 @@ print(msg)
 
 @pytest.fixture()
 def local_run():
-    if "aws_obj" in globals():
-        app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
-        asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
-        asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
-        app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
-
-    else:
+    if "aws_obj" not in globals():
         aws_obj = aws(record=False)
-        app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
-        asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
-        asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
-        app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
+
+    app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
+    asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+    asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
+    app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
+    ftd = aws_obj.blind("Pytest-EC2-FTD", "EC2INSTANCE")
+    fmc = aws_obj.blind("Pytest-EC2-FMC", "EC2INSTANCE")
 
     app_jb_ip = app_jb["public_ip"]
     asa_jb_ip = asa_jb["public_ip"]
     asa_ip = asa["public_ip"]
     app_ip = app["public_ip"]
+    ftd_ip = ftd["public_ip"]
+    fmc_ip = fmc["public_ip"]
 
-    yield app_jb_ip, asa_jb_ip, asa_ip, app_ip
+
+    yield app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip
     aws_obj.close()
 
 
 @pytest.fixture()
 def acl_config(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
 
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
     acl_config = f"access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
@@ -514,7 +514,7 @@ def test_UDP666(local_run, acl_config):
     # asa_ip = asa["public_ip"]
     # app_ip = app["public_ip"]
 
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
 
     # asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
     # acl_config = f"access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
@@ -575,7 +575,7 @@ print(msg[0])
 
 @pytest.mark.udp1to2
 def test_UDP_from_inside(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
 
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
     acl_config = f"access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
@@ -641,7 +641,7 @@ print(msg[0])
 
 @pytest.mark.udp2to1
 def test_UDP_from_outside(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
 
     # 1. transfer server file
     cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
@@ -703,7 +703,7 @@ print(msg[0])
 
 @pytest.mark.iperfudp
 def test_iperf_udp(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
 
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
     acl_config = f"access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
@@ -734,7 +734,7 @@ def test_iperf_udp(local_run):
 
 @pytest.mark.iperfudpreverse
 def test_iperf_udp_reverse(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
 
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
     acl_config = f"access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
@@ -766,7 +766,7 @@ def test_iperf_udp_reverse(local_run):
 
 @pytest.mark.iperftcp
 def test_iperf_tcp(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
 
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
     acl_config = f"access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
@@ -797,7 +797,7 @@ def test_iperf_tcp(local_run):
 
 @pytest.mark.iperftcpreverse
 def test_iperf_tcp_reverse(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
 
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
     acl_config = f"access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
@@ -830,7 +830,7 @@ def test_iperf_tcp_reverse(local_run):
 
 @pytest.mark.counter
 def test_udp_counter(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
     cmd1 = "clear asp drop"
     cmd2 = "show asp drop frame geneve-invalid-udp-checksum"
 
@@ -845,7 +845,7 @@ def test_udp_counter(local_run):
 
 @pytest.mark.reset
 def test_tcp_counter(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
 
     cmd = f"ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
@@ -874,7 +874,7 @@ def test_tcp_counter(local_run):
 
 @pytest.mark.logserver
 def test_log_server(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
     import paramiko
 
     ssh = paramiko.SSHClient()
@@ -917,7 +917,7 @@ def test_log_server(local_run):
 
 @pytest.mark.genevedebug
 def test_debug_geneve(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
     cmd1 = "debug geneve encapsulation"
     cmd2 = "debug geneve encapsulation 4"
     cmd3 = "debug geneve decapsulation"
@@ -995,7 +995,7 @@ def test_debug_geneve(local_run):
 
 @pytest.mark.metaserver
 def test_meta(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
     cmd1 = "no aaa authentication listener http data-interface port www"
     cmd2 = "nat (data-interface,data-interface) source static gwlb interface destination static interface metadata service http80 http80"
 
@@ -1026,7 +1026,7 @@ def test_meta(local_run):
 
 @pytest.mark.statistics
 def test_stats(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
     cmd1 = "show interface vni 1"
     cmd2 = "show nve 1"
     asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
@@ -1052,7 +1052,7 @@ def test_stats(local_run):
 
 @pytest.mark.capture
 def test_capture(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
     cmd0 = "no cap g"
     cmd1 = "clear cap /all"
     cmd2 = "cap g int ge trace"
@@ -1556,6 +1556,49 @@ Pytest-AMI-FMC(AMICOPY):
 
     obj.load_deployment(content=cont)
     obj.start_deployment()
+
+@pytest.mark.regASA
+def test_reg_asa():
+    cont="""
+Del_Test-1-169_TG_ASA(TERMINATION):
+  target-group-arn: Test-1-169-TG
+  targets: Id=Test-1-169_NWInterface_ASA
+  type: REGISTER
+  action:
+    query_from:
+      - Test-1-169-TG
+      - Test-1-169_NWInterface_ASA     
+
+Del_Test-1-169_TG_FTD(TERMINATION):
+  target-group-arn: Test-1-169-TG
+  targets: Id=Pytest_NWInterface_FTD1
+  type: REGISTER
+  action:
+    query_from:
+      - Test-1-169-TG
+      - Pytest_NWInterface_FTD1
+
+Test-1-169_TG_Instance(REGISTER):
+  target-group-arn: Test-1-169-TG
+  targets: Id=Test-1-169_NWInterface_ASA
+  action:
+    query_from:
+      - Test-1-169-TG
+      - Test-1-169_NWInterface_ASA        
+    bind_to:
+      - Del_Test-1-169_TG_FTD
+      - Del_Test-1-169_TG_ASA
+    cleanUP: True
+"""
+    obj = aws(debug=True)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+@pytest.mark.regFTD
+def test_reg_ftd():
+    pass
 
 
 @pytest.mark.updowngrade

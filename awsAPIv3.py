@@ -517,7 +517,7 @@ class aws(object):
             else:
                 return id
         else: #fullList not supported
-            result = {}
+            result = collections.defaultdict(lambda: None)
             try:
                 if typeName == "EC2INSTANCE":
                     cmd = f"aws ec2 describe-instances --filters Name=tag-value,Values={resName}"
@@ -532,7 +532,16 @@ class aws(object):
                     id = re.compile(pattern3).findall(res)[0].strip()
                     result["id"] = id
                     return result
-
+                elif typeName == "NETWORK_INTERFACE":
+                    cmd = f"aws ec2 describe-network-interfaces --filters Name=tag-value,Values={resName}"
+                    res = self.raw_cli_res(cmd)
+                    pattern1 = r"PrivateIpAddress: (.*)"
+                    private_ip = re.compile(pattern1).findall(res)[0].strip()
+                    result["private_ip"] = private_ip
+                    pattern3 = r"InstanceId: (.*)"
+                    id = re.compile(pattern3).findall(res)[0].strip()
+                    result["id"] = id
+                    return result
                 elif typeName == "SECURITY_GROUP":
                     cmd = f"aws ec2 describe-security-groups --filters Name=tag-value,Values={resName}"
                     res = self.raw_cli_res(cmd)
@@ -548,6 +557,14 @@ class aws(object):
                     id = re.compile(pattern1).findall(res)[0].strip()
                     result["id"] = id
                     return result
+                elif typeName == "TARGET_GROUP":
+                    cmd = f"aws elbv2 describe-target-groups --names {resName}"
+                    res = self.raw_cli_res(cmd)
+                    pattern1 = r"TargetGroupArn: (.*)"
+                    id = re.compile(pattern1).findall(res)[0].strip()
+                    result["id"] = id
+                    return result
+
             except IndexError:
                 print_color(f"[Warning][aws][blind] not exist:{resName}", "yellow")
                 return None
