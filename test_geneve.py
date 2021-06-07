@@ -1598,7 +1598,42 @@ Test-1-169_TG_Instance(REGISTER):
 
 @pytest.mark.regFTD
 def test_reg_ftd():
-    pass
+    cont = """
+Del_Test-1-169_TG_ASA(TERMINATION):
+  target-group-arn: Test-1-169-TG
+  targets: Id=Test-1-169_NWInterface_ASA
+  type: REGISTER
+  action:
+    query_from:
+      - Test-1-169-TG
+      - Test-1-169_NWInterface_ASA     
+
+Del_Test-1-169_TG_FTD(TERMINATION):
+  target-group-arn: Test-1-169-TG
+  targets: Id=Pytest_NWInterface_FTD1
+  type: REGISTER
+  action:
+    query_from:
+      - Test-1-169-TG
+      - Pytest_NWInterface_FTD1
+
+Test-1-169_TG_Instance(REGISTER):
+  target-group-arn: Test-1-169-TG
+  targets: Id=Pytest_NWInterface_FTD1
+  action:
+    query_from:
+      - Test-1-169-TG
+      - Pytest_NWInterface_FTD1        
+    bind_to:
+      - Del_Test-1-169_TG_FTD
+      - Del_Test-1-169_TG_ASA
+    cleanUP: True
+    """
+    obj = aws(debug=True)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
 
 
 @pytest.mark.updowngrade
