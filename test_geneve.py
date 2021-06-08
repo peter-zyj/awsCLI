@@ -58,7 +58,6 @@ def load_asa_config(asa_address, asa_jb_ip="20.0.250.10", debug=False):
     conn, result, cont = Geneve_reply(conn)
     assert "20.0.1.101" in cont
 
-
 def asa_config(asa_address, lines, debug=False) -> tuple:
     import pexpect
 
@@ -75,6 +74,78 @@ def asa_config(asa_address, lines, debug=False) -> tuple:
 
     conn.sendline(lines)
     conn, result, cont = Geneve_reply(conn, debug=debug)
+
+    conn.close()
+    del conn
+    return result, cont
+
+def ftd_hack(ftd_address, debug=False):
+    import pexpect
+
+    conn = None
+    while not conn:
+        conn = pexpect.spawn(ftd_address)
+    conn, result, cont = Ocean_reply(conn, debug=debug) #firstlogin, finish all password
+
+    go2ftd(conn, debug=debug)
+
+    conn.sendline("en")
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+
+    conn.sendline("show version")
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+    p = "Serial Number: (.*)"
+    sn = re.compile(p).findall(cont)[0].strip()
+
+    go2expert(conn, debug=debug)
+
+    cli = f"sudo echo -n '1111222233334444{sn}' | md5sum>/mnt/disk0/enable_configure"
+    conn.sendline(cli)
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+
+    go2ftd(conn, debug=debug)
+
+    conn.sendline("en")
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+
+    conn.sendline(f"debug menu file-system 7")
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+
+    conn.sendline(f"conf term")
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+
+    if "firepower(config)#" not in cont:
+        print("[Error][ftd_hack] failed to hack")
+        return
+
+    conn.sendline(f"end")
+    Ocean_reply(conn, debug=debug)
+
+def ftd_config(ftd_address, lines, debug=False) -> tuple:
+    import pexpect
+
+    conn = None
+    while not conn:
+        conn = pexpect.spawn(ftd_address)
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+
+    conn.sendline("system support diagnostic-cli")
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+
+    conn.sendline("end")
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+
+    conn.sendline("en")
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+
+    conn.sendline("conf term")
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+
+    conn.sendline(lines)
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+
+    conn.sendline("end")
+    Ocean_reply(conn, debug=debug)
 
     conn.close()
     del conn
@@ -454,18 +525,18 @@ print(msg)
 
     os.popen(cmd7).read()
 
-
 @pytest.fixture()
-def local_run():
+def local_run(show=False):
+
     if "aws_obj" not in globals():
         aws_obj = aws(record=False)
 
-    app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
-    asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
-    asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
-    app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
-    ftd = aws_obj.blind("Pytest-EC2-FTD", "EC2INSTANCE")
-    fmc = aws_obj.blind("Pytest-EC2-FMC", "EC2INSTANCE")
+    app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE", show=show)
+    asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE", show=show)
+    asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE", show=show)
+    app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE", show=show)
+    ftd = aws_obj.blind("Pytest-EC2-FTD", "EC2INSTANCE", show=show)
+    fmc = aws_obj.blind("Pytest-EC2-FMC", "EC2INSTANCE", show=show)
 
     app_jb_ip = app_jb["public_ip"]
     asa_jb_ip = asa_jb["public_ip"]
@@ -1408,154 +1479,154 @@ pytest_NWInterface_ASA_Bind(BIND):
     # load_asa_config(asa_address, debug=False)
 
 
-@pytest.mark.addftd
-def test_FTD():
-    cont = '''
-Pytest-EC2-FTD(EC2INSTANCE):
-  image-id: Pytest-AMI-FTD
-  instance-type: d2.2xlarge
-  key-name: testDog
-  security-group-ids: Test-1-169_SG_Sec_MGMT
-  count: 1
-  subnet-id: Test-1-169_SUB_Sec_MGMT
-  associate-public-ip-address: None
-  private-ip-address: 20.0.250.12
-  action:
-    query_from:
-        - Test-1-169_SUB_Sec_MGMT
-        - Test-1-169_SG_Sec_MGMT
-    bind_to:
-        - Pytest-AMI-FTD
-    cleanUP: True
-
-Pytest-AMI-FTD(AMICOPY):
-  source-image-id: ami-05a840fdc851de7cb
-  source-region: us-east-2
-  region: us-west-1
-  name: ftdv
-  action:
-    cleanUP: True 
-
-Pytest_SUB_Sec_2_DATA(SUBNET):   
-  vpc-id: Test-1-169_VPC_Sec
-  cidr-block: 20.0.2.0/24
-  availability-zone: '{Test-1-169_SUB_App_1_MGMT}'
-  action:
-    query_from:
-      - Test-1-169_VPC_Sec
-      - Test-1-169_SUB_App_1_MGMT
-    cleanUP: True
-Pytest_SUB_Sec_3_DATA(SUBNET):
-  vpc-id: Test-1-169_VPC_Sec
-  cidr-block: 20.0.3.0/24
-  availability-zone: '{Test-1-169_SUB_App_1_MGMT}'
-  action:
-    query_from:
-      - Test-1-169_VPC_Sec
-      - Test-1-169_SUB_App_1_MGMT     
-    cleanUP: True
-
-Pytest_NWInterface_FTD1(NETWORK_INTERFACE):
-  subnet-id: Test-1-169_SUB_Sec_DATA
-  description: pytest Data Network for ASA
-  groups: Test-1-169_SG_Sec_DATA
-  private-ip-address: 20.0.1.102
-  action:
-    query_from:
-        - Test-1-169_SUB_Sec_DATA
-        - Test-1-169_SG_Sec_DATA
-    cleanUP: True
-Pytest_NWInterface_FTD2(NETWORK_INTERFACE):
-  subnet-id: Pytest_SUB_Sec_2_DATA
-  description: Test-1-169 Data Network2 for ASA
-  groups: Test-1-169_SG_Sec_DATA
-  private-ip-address: 20.0.2.102
-  action:
-    query_from:
-        - Test-1-169_SG_Sec_DATA
-    bind_to:
-        - Pytest_SUB_Sec_2_DATA
-    cleanUP: True
-Pytest_NWInterface_FTD3(NETWORK_INTERFACE):
-  subnet-id: Pytest_SUB_Sec_3_DATA
-  description: Test-1-169 Data Network3 for ASA
-  groups: Test-1-169_SG_Sec_DATA
-  private-ip-address: 20.0.3.102
-  action:
-    query_from:
-        - Test-1-169_SG_Sec_DATA
-    bind_to:
-        - Pytest_SUB_Sec_3_DATA
-    cleanUP: True
-
-Pytest_NWInterface_FTD_1_Bind(BIND):
-  network-interface-id: Pytest_NWInterface_FTD1
-  instance-id: Pytest-EC2-FTD
-  device-index: 1
-  action:
-    bind_to:
-      - Pytest_NWInterface_FTD1
-      - Pytest-EC2-FTD
-    cleanUP: True
-Pytest_NWInterface_FTD_2_Bind(BIND):
-  network-interface-id: Pytest_NWInterface_FTD2
-  instance-id: Pytest-EC2-FTD
-  device-index: 2
-  action:
-    bind_to:
-      - Pytest_NWInterface_FTD2
-      - Pytest-EC2-FTD
-    cleanUP: True
-Pytest_NWInterface_FTD_3_Bind(BIND):
-  network-interface-id: Pytest_NWInterface_FTD3
-  instance-id: Pytest-EC2-FTD
-  device-index: 3
-  action:
-    bind_to:
-      - Pytest_NWInterface_FTD3
-      - Pytest-EC2-FTD
-    cleanUP: True
-'''
-    obj = aws(debug=True)
-    atexit.register(obj.close)
-
-    obj.load_deployment(content=cont)
-    obj.start_deployment()
-
-
-@pytest.mark.addfmc
-def test_FMC():
-    cont = '''
-Pytest-EC2-FMC(EC2INSTANCE):
-  image-id: Pytest-AMI-FMC
-  instance-type: d2.2xlarge
-  key-name: testDog
-  security-group-ids: Test-1-169_SG_Sec_MGMT
-  count: 1
-  subnet-id: Test-1-169_SUB_Sec_MGMT
-  associate-public-ip-address: None
-  private-ip-address: 20.0.250.13
-  action:
-    query_from:
-        - Test-1-169_SUB_Sec_MGMT
-        - Test-1-169_SG_Sec_MGMT
-    bind_to:
-        - Pytest-AMI-FMC
-    cleanUP: True
-
-Pytest-AMI-FMC(AMICOPY):
-  source-image-id: ami-06aac12eabffe610d
-  source-region: us-east-2
-  region: us-west-1
-  name: fmcv
-  action:
-    cleanUP: True 
-'''
-    obj = aws(debug=True)
-    atexit.register(obj.close)
-
-    obj.load_deployment(content=cont)
-    obj.start_deployment()
+# @pytest.mark.addftd
+# def test_FTD():
+#     cont = '''
+# Pytest-EC2-FTD(EC2INSTANCE):
+#   image-id: Pytest-AMI-FTD
+#   instance-type: d2.2xlarge
+#   key-name: testDog
+#   security-group-ids: Test-1-169_SG_Sec_MGMT
+#   count: 1
+#   subnet-id: Test-1-169_SUB_Sec_MGMT
+#   associate-public-ip-address: None
+#   private-ip-address: 20.0.250.12
+#   action:
+#     query_from:
+#         - Test-1-169_SUB_Sec_MGMT
+#         - Test-1-169_SG_Sec_MGMT
+#     bind_to:
+#         - Pytest-AMI-FTD
+#     cleanUP: True
+#
+# Pytest-AMI-FTD(AMICOPY):
+#   source-image-id: ami-05a840fdc851de7cb
+#   source-region: us-east-2
+#   region: us-west-1
+#   name: ftdv
+#   action:
+#     cleanUP: True
+#
+# Pytest_SUB_Sec_2_DATA(SUBNET):
+#   vpc-id: Test-1-169_VPC_Sec
+#   cidr-block: 20.0.2.0/24
+#   availability-zone: '{Test-1-169_SUB_App_1_MGMT}'
+#   action:
+#     query_from:
+#       - Test-1-169_VPC_Sec
+#       - Test-1-169_SUB_App_1_MGMT
+#     cleanUP: True
+# Pytest_SUB_Sec_3_DATA(SUBNET):
+#   vpc-id: Test-1-169_VPC_Sec
+#   cidr-block: 20.0.3.0/24
+#   availability-zone: '{Test-1-169_SUB_App_1_MGMT}'
+#   action:
+#     query_from:
+#       - Test-1-169_VPC_Sec
+#       - Test-1-169_SUB_App_1_MGMT
+#     cleanUP: True
+#
+# Pytest_NWInterface_FTD1(NETWORK_INTERFACE):
+#   subnet-id: Test-1-169_SUB_Sec_DATA
+#   description: pytest Data Network for ASA
+#   groups: Test-1-169_SG_Sec_DATA
+#   private-ip-address: 20.0.1.102
+#   action:
+#     query_from:
+#         - Test-1-169_SUB_Sec_DATA
+#         - Test-1-169_SG_Sec_DATA
+#     cleanUP: True
+# Pytest_NWInterface_FTD2(NETWORK_INTERFACE):
+#   subnet-id: Pytest_SUB_Sec_2_DATA
+#   description: Test-1-169 Data Network2 for ASA
+#   groups: Test-1-169_SG_Sec_DATA
+#   private-ip-address: 20.0.2.102
+#   action:
+#     query_from:
+#         - Test-1-169_SG_Sec_DATA
+#     bind_to:
+#         - Pytest_SUB_Sec_2_DATA
+#     cleanUP: True
+# Pytest_NWInterface_FTD3(NETWORK_INTERFACE):
+#   subnet-id: Pytest_SUB_Sec_3_DATA
+#   description: Test-1-169 Data Network3 for ASA
+#   groups: Test-1-169_SG_Sec_DATA
+#   private-ip-address: 20.0.3.102
+#   action:
+#     query_from:
+#         - Test-1-169_SG_Sec_DATA
+#     bind_to:
+#         - Pytest_SUB_Sec_3_DATA
+#     cleanUP: True
+#
+# Pytest_NWInterface_FTD_1_Bind(BIND):
+#   network-interface-id: Pytest_NWInterface_FTD1
+#   instance-id: Pytest-EC2-FTD
+#   device-index: 1
+#   action:
+#     bind_to:
+#       - Pytest_NWInterface_FTD1
+#       - Pytest-EC2-FTD
+#     cleanUP: True
+# Pytest_NWInterface_FTD_2_Bind(BIND):
+#   network-interface-id: Pytest_NWInterface_FTD2
+#   instance-id: Pytest-EC2-FTD
+#   device-index: 2
+#   action:
+#     bind_to:
+#       - Pytest_NWInterface_FTD2
+#       - Pytest-EC2-FTD
+#     cleanUP: True
+# Pytest_NWInterface_FTD_3_Bind(BIND):
+#   network-interface-id: Pytest_NWInterface_FTD3
+#   instance-id: Pytest-EC2-FTD
+#   device-index: 3
+#   action:
+#     bind_to:
+#       - Pytest_NWInterface_FTD3
+#       - Pytest-EC2-FTD
+#     cleanUP: True
+# '''
+#     obj = aws(debug=False)
+#     atexit.register(obj.close)
+#
+#     obj.load_deployment(content=cont)
+#     obj.start_deployment()
+#
+#
+# @pytest.mark.addfmc
+# def test_FMC():
+#     cont = '''
+# Pytest-EC2-FMC(EC2INSTANCE):
+#   image-id: Pytest-AMI-FMC
+#   instance-type: d2.2xlarge
+#   key-name: testDog
+#   security-group-ids: Test-1-169_SG_Sec_MGMT
+#   count: 1
+#   subnet-id: Test-1-169_SUB_Sec_MGMT
+#   associate-public-ip-address: None
+#   private-ip-address: 20.0.250.13
+#   action:
+#     query_from:
+#         - Test-1-169_SUB_Sec_MGMT
+#         - Test-1-169_SG_Sec_MGMT
+#     bind_to:
+#         - Pytest-AMI-FMC
+#     cleanUP: True
+#
+# Pytest-AMI-FMC(AMICOPY):
+#   source-image-id: ami-06aac12eabffe610d
+#   source-region: us-east-2
+#   region: us-west-1
+#   name: fmcv
+#   action:
+#     cleanUP: True
+# '''
+#     obj = aws(debug=True)
+#     atexit.register(obj.close)
+#
+#     obj.load_deployment(content=cont)
+#     obj.start_deployment()
 
 @pytest.mark.regASA
 def test_reg_asa():
@@ -1635,6 +1706,25 @@ Test-1-169_TG_Instance(REGISTER):
     obj.load_deployment(content=cont)
     obj.start_deployment()
 
+@pytest.mark.hackFTD
+def test_ftd_backdoor(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+    ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
+    ftd_hack(ftd_address)
+    cmd = "conf term"
+    res, cont = ftd_config(ftd_address, cmd)
+
+    assert "firepower(config)#" in cont
+
+
+@pytest.mark.FTDpmp
+def test_ftd_prompt(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+    ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
+    cmd = "show run"
+    res, cont = ftd_config(ftd_address, cmd)
+    # print(res)
+    # print(cont)
 
 @pytest.mark.updowngrade
 def test_image_replacement(keyFile, trs):

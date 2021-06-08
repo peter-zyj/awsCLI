@@ -2082,7 +2082,171 @@ def test_manual_termination():
 
     obj.close()
 
+@pytest.mark.extraFTD
+def test_replace_exFTD():
+    cont = '''
+Del_PytestExtra_NWInterface_FTD1(TERMINATION):
+  type: NETWORK_INTERFACE
+  action:
+    bind_to:
+        - Del_PytestExtra-EC2-FTD
+Del_PytestExtra_NWInterface_FTD2(TERMINATION):
+  type: NETWORK_INTERFACE
+  action:
+    bind_to:
+        - Del_PytestExtra-EC2-FTD
+Del_PytestExtra_NWInterface_FTD3(TERMINATION):
+  type: NETWORK_INTERFACE
+  action:
+    bind_to:
+        - Del_PytestExtra-EC2-FTD
 
+Del_PytestExtra_SUB_Sec_2_DATA(TERMINATION):
+  type: SUBNET
+  action:
+    bind_to:
+        - Del_PytestExtra_NWInterface_FTD2
+Del_PytestExtra_SUB_Sec_3_DATA(TERMINATION):
+  type: SUBNET
+  action:
+    bind_to:
+        - Del_PytestExtra_NWInterface_FTD3
+
+Del_PytestExtra-AMI-FTD(TERMINATION):
+  # id: ami-0d846ab5ee3c4de5a
+  type: AMICOPY
+  action:
+    bind_to:
+        - Del_PytestExtra-EC2-FTD
+
+Del_PytestExtra-EC2-FTD(TERMINATION):
+  # id: i-0dfac8028eeb2df7c
+  type: EC2INSTANCE       
+
+PytestExtra-EC2-FTD(EC2INSTANCE):
+  image-id: PytestExtra-AMI-FTD
+  instance-type: d2.2xlarge
+  key-name: testDog
+  security-group-ids: Test-1-169_SG_Sec_MGMT
+  count: 1
+  subnet-id: Test-1-169_SUB_Sec_MGMT
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.22
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_MGMT
+        - Test-1-169_SG_Sec_MGMT
+    bind_to:
+        - PytestExtra-AMI-FTD
+        - Del_PytestExtra-EC2-FTD
+    cleanUP: True
+
+PytestExtra-AMI-FTD(AMICOPY):
+  source-image-id: ami-08473057344d9dd0d
+  source-region: us-west-2
+  region: us-west-1
+  name: ftdv
+  action:
+    bind_to:
+        - Del_PytestExtra-AMI-FTD
+    cleanUP: True 
+
+PytestExtra_SUB_Sec_2_DATA(SUBNET):   
+  vpc-id: Test-1-169_VPC_Sec
+  cidr-block: 20.0.22.0/24
+  availability-zone: '{Test-1-169_SUB_App_1_MGMT}'
+  action:
+    query_from:
+      - Test-1-169_VPC_Sec
+      - Test-1-169_SUB_App_1_MGMT
+    bind_to:
+      - Del_PytestExtra_SUB_Sec_2_DATA
+      - PytestExtra_SUB_Sec_3_DATA
+    cleanUP: True
+PytestExtra_SUB_Sec_3_DATA(SUBNET):
+  vpc-id: Test-1-169_VPC_Sec
+  cidr-block: 20.0.23.0/24
+  availability-zone: '{Test-1-169_SUB_App_1_MGMT}'
+  action:
+    query_from:
+      - Test-1-169_VPC_Sec
+      - Test-1-169_SUB_App_1_MGMT  
+    bind_to:
+      - Del_PytestExtra_SUB_Sec_3_DATA 
+    cleanUP: True
+
+PytestExtra_NWInterface_FTD1(NETWORK_INTERFACE):
+  subnet-id: Test-1-169_SUB_Sec_DATA
+  description: pytest Data Network for ASA
+  groups: Test-1-169_SG_Sec_DATA
+  private-ip-address: 20.0.1.122
+  action:
+    query_from:
+        - Test-1-169_SUB_Sec_DATA
+        - Test-1-169_SG_Sec_DATA
+    bind_to:
+        - Del_PytestExtra_NWInterface_FTD1
+    cleanUP: True
+PytestExtra_NWInterface_FTD2(NETWORK_INTERFACE):
+  subnet-id: PytestExtra_SUB_Sec_2_DATA
+  description: Test-1-169 Data Network2 for ASA
+  groups: Test-1-169_SG_Sec_DATA
+  private-ip-address: 20.0.22.102
+  action:
+    query_from:
+        - Test-1-169_SG_Sec_DATA
+    bind_to:
+        - PytestExtra_SUB_Sec_2_DATA
+        - Del_PytestExtra_NWInterface_FTD2
+    cleanUP: True
+PytestExtra_NWInterface_FTD3(NETWORK_INTERFACE):
+  subnet-id: PytestExtra_SUB_Sec_3_DATA
+  description: Test-1-169 Data Network3 for ASA
+  groups: Test-1-169_SG_Sec_DATA
+  private-ip-address: 20.0.23.102
+  action:
+    query_from:
+        - Test-1-169_SG_Sec_DATA
+    bind_to:
+        - PytestExtra_SUB_Sec_3_DATA
+        - Del_PytestExtra_NWInterface_FTD3
+    cleanUP: True
+
+PytestExtra_NWInterface_FTD_1_Bind(BIND):
+  network-interface-id: PytestExtra_NWInterface_FTD1
+  instance-id: PytestExtra-EC2-FTD
+  device-index: 1
+  action:
+    bind_to:
+      - PytestExtra_NWInterface_FTD1
+      - PytestExtra-EC2-FTD
+      - PytestExtra_NWInterface_FTD_3_Bind
+    cleanUP: True
+PytestExtra_NWInterface_FTD_2_Bind(BIND):
+  network-interface-id: PytestExtra_NWInterface_FTD2
+  instance-id: PytestExtra-EC2-FTD
+  device-index: 2
+  action:
+    bind_to:
+      - PytestExtra_NWInterface_FTD2
+      - PytestExtra-EC2-FTD
+      - PytestExtra_NWInterface_FTD_1_Bind
+    cleanUP: True
+PytestExtra_NWInterface_FTD_3_Bind(BIND):
+  network-interface-id: PytestExtra_NWInterface_FTD3
+  instance-id: PytestExtra-EC2-FTD
+  device-index: 3
+  action:
+    bind_to:
+      - PytestExtra_NWInterface_FTD3
+      - PytestExtra-EC2-FTD
+    cleanUP: True
+'''
+    obj = aws(record=False, debug=True)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
 
 # @pytest.mark.runman
 # def test_runman():

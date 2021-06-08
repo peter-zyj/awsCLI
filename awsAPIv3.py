@@ -501,10 +501,10 @@ class aws(object):
         return None
 
     # @staticmethod
-    def blind(self, resName, typeName=None, fullList=False):
+    def blind(self, resName, typeName=None, fullList=False, show=True):
         if not typeName:
             cmd = f"aws ec2 describe-tags --filters Name=tag-value,Values={resName}"
-            res = self.raw_cli_res(cmd)
+            res = self.raw_cli_res(cmd, show=show)
             pattern = r"ResourceId: (.*)"
             try:
                 if not fullList:
@@ -521,7 +521,7 @@ class aws(object):
             try:
                 if typeName == "EC2INSTANCE":
                     cmd = f"aws ec2 describe-instances --filters Name=tag-value,Values={resName}"
-                    res = self.raw_cli_res(cmd)
+                    res = self.raw_cli_res(cmd, show=show)
                     pattern1 = r"PrivateIpAddress: (.*)"
                     private_ip = re.compile(pattern1).findall(res)[0].strip()
                     result["private_ip"] = private_ip
@@ -534,7 +534,7 @@ class aws(object):
                     return result
                 elif typeName == "NETWORK_INTERFACE":
                     cmd = f"aws ec2 describe-network-interfaces --filters Name=tag-value,Values={resName}"
-                    res = self.raw_cli_res(cmd)
+                    res = self.raw_cli_res(cmd, show=show)
                     pattern1 = r"PrivateIpAddress: (.*)"
                     private_ip = re.compile(pattern1).findall(res)[0].strip()
                     result["private_ip"] = private_ip
@@ -544,7 +544,7 @@ class aws(object):
                     return result
                 elif typeName == "SECURITY_GROUP":
                     cmd = f"aws ec2 describe-security-groups --filters Name=tag-value,Values={resName}"
-                    res = self.raw_cli_res(cmd)
+                    res = self.raw_cli_res(cmd, show=show)
                     pattern1 = r"GroupId: (.*)"
                     id = re.compile(pattern1).findall(res)[0].strip()
                     result["id"] = id
@@ -552,14 +552,14 @@ class aws(object):
 
                 elif typeName == "SUBNET":
                     cmd = f"aws ec2 describe-subnets --filters Name=tag-value,Values={resName}"
-                    res = self.raw_cli_res(cmd)
+                    res = self.raw_cli_res(cmd, show=show)
                     pattern1 = r"SubnetId: (.*)"
                     id = re.compile(pattern1).findall(res)[0].strip()
                     result["id"] = id
                     return result
                 elif typeName == "TARGET_GROUP":
                     cmd = f"aws elbv2 describe-target-groups --names {resName}"
-                    res = self.raw_cli_res(cmd)
+                    res = self.raw_cli_res(cmd, show=show)
                     pattern1 = r"TargetGroupArn: (.*)"
                     id = re.compile(pattern1).findall(res)[0].strip()
                     result["id"] = id
