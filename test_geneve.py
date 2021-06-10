@@ -151,6 +151,23 @@ def ftd_config(ftd_address, lines, debug=False) -> tuple:
     del conn
     return result, cont
 
+def load_ftd_config(ftd_address, debug=False):
+    import pexpect
+    conn = pexpect.spawn(ftd_address)
+    conn, result, cont = Ocean_reply(conn)
+
+    conn.sendline("en")
+    conn, result, cont = Ocean_reply(conn)
+
+    conn.sendline("conf term")
+    conn, result, cont = Ocean_reply(conn)
+
+    # asa load pytest_day999.txt
+    Ocean_load(conn, "pytest_day999FTD.txt")
+
+    conn.sendline("show run")
+    conn, result, cont = Ocean_reply(conn)
+    assert "20.0.1.102" in cont
 
 @pytest.fixture(scope="module", autouse=True)
 def setup(request):
@@ -1716,7 +1733,6 @@ def test_ftd_backdoor(local_run):
 
     assert "firepower(config)#" in cont
 
-
 @pytest.mark.FTDpmp
 def test_ftd_prompt(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
@@ -1725,6 +1741,62 @@ def test_ftd_prompt(local_run):
     res, cont = ftd_config(ftd_address, cmd)
     # print(res)
     # print(cont)
+
+@pytest.mark.FMCreg
+def test_fmc_reg(local_run):
+
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.common.action_chains import ActionChains
+    from selenium.webdriver.support import expected_conditions
+    from selenium.webdriver.support.wait import WebDriverWait
+    from selenium.webdriver.common.keys import Keys
+    from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+
+    driver = webdriver.Chrome("/Users/yijunzhu/PycharmProjects/iTest/Geneve/chromedriver")
+
+    try:
+        driver.get(f"https://{fmc_ip}/ui/login")
+        driver.find_element(By.ID, "details-button").click()
+        driver.find_element(By.ID, "proceed-link").click()
+    except:
+        pass
+    time.sleep(5)# wait, otherwise can't find bd-2
+    driver.get(f"https://{fmc_ip}/ui/login")
+    driver.find_element(By.ID, "bd-2").send_keys("admin")
+    driver.find_element(By.ID, "bd-5").send_keys("Cisco123!@#")
+    driver.find_element(By.CSS_SELECTOR, ".atomic-btn").click()
+
+    # # element = driver.find_element(By.CSS_SELECTOR, ".atomic-btn")
+
+
+@pytest.mark.FTDbasic1to2
+def test_Basic_PingGoogle_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+    test_reg_ftd()
+    print('WAIT for FTD register', wait(90))
+    import paramiko
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+
+    while True:
+        _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'ping 8.8.8.8 -c 1'")
+        stdout.channel.recv_exit_status()
+        resp1 = "".join(stdout.readlines())
+        if not resp1:
+            continue
+        else:
+            break
+
+    assert "0% packet loss" in resp1
+    ssh.close()
+
 
 @pytest.mark.updowngrade
 def test_image_replacement(keyFile, trs):
