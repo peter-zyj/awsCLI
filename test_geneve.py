@@ -1743,7 +1743,8 @@ def test_ftd_prompt(local_run):
     # print(cont)
 
 @pytest.mark.FMCreg
-def test_fmc_reg(local_run):
+# def test_fmc_reg(local_run):
+def test_fmc_reg():
 
     from selenium import webdriver
     from selenium.webdriver.common.by import By
@@ -1753,8 +1754,8 @@ def test_fmc_reg(local_run):
     from selenium.webdriver.common.keys import Keys
     from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
-
+    # app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+    fmc_ip = "13.56.212.185"
     driver = webdriver.Chrome("/Users/yijunzhu/PycharmProjects/iTest/Geneve/chromedriver")
 
     try:
@@ -1768,8 +1769,29 @@ def test_fmc_reg(local_run):
     driver.find_element(By.ID, "bd-2").send_keys("admin")
     driver.find_element(By.ID, "bd-5").send_keys("Cisco123!@#")
     driver.find_element(By.CSS_SELECTOR, ".atomic-btn").click()
+    time.sleep(5)
+    try:
+        driver.find_element(By.CSS_SELECTOR, ".atomic-btn:nth-child(2)").click()
+    except:
+        pass
+    time.sleep(5)
 
-    # # element = driver.find_element(By.CSS_SELECTOR, ".atomic-btn")
+
+    driver.find_element(By.LINK_TEXT, "Devices").click()
+    time.sleep(5)
+    driver.find_element(By.LINK_TEXT, "Device Management").click()
+    time.sleep(5)
+    driver.find_element(By.CSS_SELECTOR, "#gwt-debug-device_management-add_dropdown-add .x-btn-text").click()
+    driver.find_element(By.ID, "gwt-debug-device_management-device-add").click()
+    time.sleep(5)
+    driver.find_element(By.ID, "gwt-debug-device_registration-host-text_field-input").send_keys("20.0.250.66")
+
+
+    # driver.find_element(By.CSS_SELECTOR, ".atomic-tab-group__tab--hover .css-14zyrqm").click()
+    # driver.find_element(By.LINK_TEXT, "Device Management").click()
+    # driver.find_element(By.CSS_SELECTOR, "#gwt-debug-device_management-add_dropdown-add .x-btn-text").click()
+    # driver.find_element(By.ID, "gwt-debug-device_management-device-add").click()
+    # driver.find_element(By.ID, "gwt-debug-device_registration-host-text_field-input").send_keys("20.0.250.66")
 
 
 @pytest.mark.FTDbasic1to2
