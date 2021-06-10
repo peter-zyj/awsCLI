@@ -1748,12 +1748,14 @@ def test_fmc_reg():
 
     from selenium import webdriver
     from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import Select
     from selenium.webdriver.common.action_chains import ActionChains
     from selenium.webdriver.support import expected_conditions
     from selenium.webdriver.support.wait import WebDriverWait
     from selenium.webdriver.common.keys import Keys
     from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
+    timer = 5
     # app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
     fmc_ip = "13.56.212.185"
     driver = webdriver.Chrome("/Users/yijunzhu/PycharmProjects/iTest/Geneve/chromedriver")
@@ -1764,36 +1766,46 @@ def test_fmc_reg():
         driver.find_element(By.ID, "proceed-link").click()
     except:
         pass
-    time.sleep(5)# wait, otherwise can't find bd-2
+    time.sleep(timer)# wait, otherwise can't find bd-2
     driver.get(f"https://{fmc_ip}/ui/login")
     driver.find_element(By.ID, "bd-2").send_keys("admin")
     driver.find_element(By.ID, "bd-5").send_keys("Cisco123!@#")
     driver.find_element(By.CSS_SELECTOR, ".atomic-btn").click()
-    time.sleep(5)
+    time.sleep(timer)
     try:
         driver.find_element(By.CSS_SELECTOR, ".atomic-btn:nth-child(2)").click()
     except:
         pass
-    time.sleep(5)
+    time.sleep(timer)
 
 
     driver.find_element(By.LINK_TEXT, "Devices").click()
-    time.sleep(5)
+    time.sleep(timer)
     driver.find_element(By.LINK_TEXT, "Device Management").click()
-    time.sleep(5)
+    time.sleep(timer)
     driver.find_element(By.CSS_SELECTOR, "#gwt-debug-device_management-add_dropdown-add .x-btn-text").click()
     driver.find_element(By.ID, "gwt-debug-device_management-device-add").click()
-    time.sleep(5)
+    time.sleep(timer)
     driver.find_element(By.ID, "gwt-debug-device_registration-host-text_field-input").send_keys("20.0.250.66")
 
 
-    # driver.find_element(By.CSS_SELECTOR, ".atomic-tab-group__tab--hover .css-14zyrqm").click()
-    # driver.find_element(By.LINK_TEXT, "Device Management").click()
-    # driver.find_element(By.CSS_SELECTOR, "#gwt-debug-device_management-add_dropdown-add .x-btn-text").click()
-    # driver.find_element(By.ID, "gwt-debug-device_management-device-add").click()
-    # driver.find_element(By.ID, "gwt-debug-device_registration-host-text_field-input").send_keys("20.0.250.66")
+    driver.find_element(By.ID, "gwt-debug-device_registration-display_name-text_field-input").click()
+    driver.find_element(By.ID, "gwt-debug-device_registration-registration_key-text_field-input").send_keys("cisco")
+    driver.find_element(By.ID, "gwt-debug-device_registration-access_control_policy-combobox-input").click()
+
+    time.sleep(timer)
+    driver.find_element(By.XPATH, '//*[@id="x-auto-222"]/div[1]').click()
+    # driver.find_element(By.ID, "gwt-debug-device_registration-access_control_policy-combobox-input").send_keys("Keys.ENTER")
 
 
+    time.sleep(timer)
+    driver.find_element(By.ID, "x-auto-226").click()
+    driver.find_element(By.ID, "x-auto-228").click()
+    driver.find_element(By.ID, "x-auto-230").click()
+    time.sleep(timer)
+    driver.find_element(By.CSS_SELECTOR, "#gwt-debug-device_registration-register-button .x-btn-text").click()
+
+    time.sleep(600)
 @pytest.mark.FTDbasic1to2
 def test_Basic_PingGoogle_FTD(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
