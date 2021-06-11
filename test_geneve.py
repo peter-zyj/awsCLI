@@ -248,7 +248,7 @@ def Basic_miss_config():
     assert "100% packet loss" in resp1
     ssh.close()
 
-
+@pytest.mark.geneveASA
 @pytest.mark.basic1to2
 def test_Basic_PingGoogle(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -272,7 +272,7 @@ def test_Basic_PingGoogle(local_run):
     assert "0% packet loss" in resp1
     ssh.close()
 
-
+@pytest.mark.geneveASA
 @pytest.mark.basic2to1
 def test_Basic_PingApp(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -303,7 +303,7 @@ def test_Basic_PingApp(local_run):
     asa_config(asa_address, no_access_list)
     ssh.close()
 
-
+@pytest.mark.geneveASA
 @pytest.mark.install1to2
 def test_apt_install_from_outside(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -338,7 +338,7 @@ def test_apt_install_from_outside(local_run):
 
     ssh.close()
 
-
+@pytest.mark.geneveASA
 @pytest.mark.install2to1
 def test_apt_install_from_inside(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -407,7 +407,7 @@ def test_PYSERVER(skip_updown):
     #        "ubuntu@54.241.122.28 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
     # os.popen(cmd3).read()
 
-
+@pytest.mark.geneveASA
 @pytest.mark.tcp
 @pytest.mark.tcp1to2
 def test_TCP23_from_outside(local_run):
@@ -476,7 +476,7 @@ print(msg)
     no_acl_config = f"no access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
 
-
+@pytest.mark.geneveASA
 @pytest.mark.tcp
 @pytest.mark.tcp2to1
 def test_TCP23_from_inside(local_run):
@@ -580,7 +580,7 @@ def acl_config(local_run):
     no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
 
-
+@pytest.mark.geneveASA
 @pytest.mark.udpYijun
 # def test_UDP666(acl_config):
 def test_UDP666(local_run, acl_config):
@@ -660,7 +660,7 @@ print(msg[0])
     # no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
     # asa_config(asa_address, no_acl_config)
 
-
+@pytest.mark.geneveASA
 @pytest.mark.udp1to2
 def test_UDP_from_inside(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -726,7 +726,7 @@ print(msg[0])
     no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
 
-
+@pytest.mark.geneveASA
 @pytest.mark.udp2to1
 def test_UDP_from_outside(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -788,7 +788,7 @@ print(msg[0])
 
     os.popen(cmd7).read()
 
-
+@pytest.mark.geneveASA
 @pytest.mark.iperfudp
 def test_iperf_udp(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -819,7 +819,7 @@ def test_iperf_udp(local_run):
     no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
 
-
+@pytest.mark.geneveASA
 @pytest.mark.iperfudpreverse
 def test_iperf_udp_reverse(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -851,7 +851,7 @@ def test_iperf_udp_reverse(local_run):
     no_acl_config = f"no access-list geneve extended permit udp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
 
-
+@pytest.mark.geneveASA
 @pytest.mark.iperftcp
 def test_iperf_tcp(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -882,7 +882,7 @@ def test_iperf_tcp(local_run):
     no_acl_config = f"no access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
 
-
+@pytest.mark.geneveASA
 @pytest.mark.iperftcpreverse
 def test_iperf_tcp_reverse(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -915,7 +915,7 @@ def test_iperf_tcp_reverse(local_run):
     no_acl_config = f"no access-list geneve extended permit tcp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_acl_config)
 
-
+@pytest.mark.geneveASA
 @pytest.mark.counter
 def test_udp_counter(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -930,7 +930,7 @@ def test_udp_counter(local_run):
     _, res = asa_config(asa_address, cmd2)
     assert "geneve-invalid-udp-checksum" in res
 
-
+@pytest.mark.geneveASA
 @pytest.mark.reset
 def test_tcp_counter(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -959,7 +959,7 @@ def test_tcp_counter(local_run):
 
     assert "tcp-not-syn" in res
 
-
+@pytest.mark.geneveASA
 @pytest.mark.logserver
 def test_log_server(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -1002,7 +1002,7 @@ def test_log_server(local_run):
     ssh.close()
     ssh2.close()
 
-
+@pytest.mark.geneveASA
 @pytest.mark.genevedebug
 def test_debug_geneve(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -1080,7 +1080,7 @@ def test_debug_geneve(local_run):
     conn.close()
     del conn
 
-
+@pytest.mark.geneveASA
 @pytest.mark.metaserver
 def test_meta(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -1111,7 +1111,7 @@ def test_meta(local_run):
     assert "0% packet loss" in resp1
     ssh.close()
 
-
+@pytest.mark.geneveASA
 @pytest.mark.statistics
 def test_stats(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
@@ -1138,6 +1138,7 @@ def test_stats(local_run):
     assert output_cmd1_2 > output_cmd1_1
     assert output_cmd2_2 > output_cmd2_1
 
+@pytest.mark.geneveASA
 @pytest.mark.capture
 def test_capture(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
