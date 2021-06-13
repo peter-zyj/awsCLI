@@ -154,19 +154,20 @@ def ftd_config(ftd_address, lines, debug=False) -> tuple:
 def load_ftd_config(ftd_address, debug=False):
     import pexpect
     conn = pexpect.spawn(ftd_address)
-    conn, result, cont = Ocean_reply(conn)
+    conn, result, cont = Ocean_reply(conn,debug=debug)
+
+    go2ftd(conn, debug=debug)
 
     conn.sendline("en")
-    conn, result, cont = Ocean_reply(conn)
+    conn, result, cont = Ocean_reply(conn,debug=debug)
 
     conn.sendline("conf term")
-    conn, result, cont = Ocean_reply(conn)
+    conn, result, cont = Ocean_reply(conn,debug=debug)
 
-    # asa load pytest_day999.txt
-    Ocean_load(conn, "pytest_day999FTD.txt")
+    Ocean_load(conn, "pytest_day999FTD.txt",debug=debug)
 
     conn.sendline("show run")
-    conn, result, cont = Ocean_reply(conn)
+    conn, result, cont = Ocean_reply(conn,debug=debug)
     assert "20.0.1.102" in cont
 
 @pytest.fixture(scope="module", autouse=True)
@@ -1734,14 +1735,12 @@ def test_ftd_backdoor(local_run):
 
     assert "firepower(config)#" in cont
 
-@pytest.mark.FTDpmp
-def test_ftd_prompt(local_run):
+@pytest.mark.FTDconfig
+def test_ftd_config(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
     ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
-    cmd = "show run"
-    res, cont = ftd_config(ftd_address, cmd)
-    # print(res)
-    # print(cont)
+    load_ftd_config(ftd_address, debug=False)
+
 
 @pytest.mark.FMCreg
 def test_fmc_reg(local_run):

@@ -598,9 +598,9 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    res = obj.load_deployment("aws_tb_pytest_west_1_ftd.config")
+    res = obj.load_deployment("aws_tb_pytest_west_1_hybrid.config")
     obj.start_deployment()
 
     print_color("~~~~~~~~~~~~~~~ Ready to Rock ~~~~~~~~~~~~~~", "pink")
-    # time.sleep(3600)
+    time.sleep(1200)
     obj.close()

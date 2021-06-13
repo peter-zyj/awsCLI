@@ -2077,7 +2077,7 @@ def test_manual_termination():
     obj = aws(setting, record=False)
     atexit.register(obj.close)
 
-    name = "aws_cli_11-47-43_20-05-2021"
+    name = "aws_cli_11-16-07_13-06-2021"
     obj.manual_termination(name)
 
     obj.close()
