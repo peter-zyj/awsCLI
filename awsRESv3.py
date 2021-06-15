@@ -1682,6 +1682,8 @@ class TERMINATION(resource):
             tmp_cmd = ""
             for id in self.id:
                 id = id.strip()
+                if self.type == "EC2INSTANCE" and ("vol-" in id or "eni-" in id):
+                    continue
                 tmp_cmd += self.creation.replace("@id@", id)
 
             self.creation = tmp_cmd

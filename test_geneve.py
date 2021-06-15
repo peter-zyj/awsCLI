@@ -895,7 +895,11 @@ def test_iperf_tcp(local_run):
 
     res = os.popen(cmd2).read()
 
-    bd = re.compile(" ([\d.]+?) (?=MBytes)").findall(res)[0]
+    try:
+        bd = re.compile(" ([\d.]+?) (?=MBytes)").findall(res)[0]
+    except:
+        bd = re.compile(" ([\d.]+?) (?=GBytes)").findall(res)[0]
+
     assert float(bd) > 0
 
     cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
@@ -927,7 +931,10 @@ def test_iperf_tcp_reverse(local_run):
     res = os.popen(cmd2).read()
 
     print("Iperf result:\n", res)
-    bd = re.compile(" ([\d.]+?) (?=MBytes)").findall(res)[0]
+    try:
+        bd = re.compile(" ([\d.]+?) (?=MBytes)").findall(res)[0]
+    except:
+        bd = re.compile(" ([\d.]+?) (?=GBytes)").findall(res)[0]
     assert float(bd) > 0
 
     cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
@@ -1567,8 +1574,6 @@ Test-Hybrid-AMI-FMC(AMICOPY):
     obj.load_deployment(content=cont)
     obj.start_deployment()
 
-
-
 @pytest.mark.replace
 @pytest.mark.reFMC
 def test_replace_FMC():
@@ -2048,6 +2053,7 @@ def test_ftd_config(local_run):
     ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
     load_ftd_config(ftd_address, debug=False)
 
+@pytest.mark.geneveFTD
 @pytest.mark.FTDbasic1to2
 def test_Basic_PingGoogle_FTD(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
@@ -2073,6 +2079,540 @@ def test_Basic_PingGoogle_FTD(local_run):
     assert "0% packet loss" in resp1
     ssh.close()
 
+@pytest.mark.geneveFTD
+@pytest.mark.FTDbasic2to1
+def test_Basic_PingApp_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+    import paramiko
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+
+    while True:
+        _, stdout, _ = ssh.exec_command(f"ping {app_ip} -c 1")
+        stdout.channel.recv_exit_status()
+        resp1 = "".join(stdout.readlines())
+        if not resp1:
+            continue
+        else:
+            break
+
+    assert "0% packet loss" in resp1
+
+    ssh.close()
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDinstall1to2
+def test_apt_install_from_outside_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+    import paramiko
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+
+    while True:
+        _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'sudo apt install net-tools'")
+        stdout.channel.recv_exit_status()
+        resp1 = "".join(stdout.readlines())
+        if not resp1:
+            continue
+        else:
+            break
+
+    while True:
+        _, stdout2, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
+                                         "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'ifconfig'")
+        stdout2.channel.recv_exit_status()
+        resp2 = "".join(stdout2.readlines())
+        if not resp2:
+            continue
+        else:
+            break
+
+    assert "10.0.1.101" in resp2
+
+    ssh.close()
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDinstall2to1
+def test_apt_install_from_inside_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+    import paramiko
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+
+    while True:
+        _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'sudo apt install apache2 -y'")
+        stdout.channel.recv_exit_status()
+        resp1 = "".join(stdout.readlines())
+        if not resp1:
+            continue
+        else:
+            break
+
+    while True:
+        _, stdout2, _ = ssh.exec_command(f"wget http://{app_ip}/index.html; ls index.html")
+
+        stdout2.channel.recv_exit_status()
+        resp2 = "".join(stdout2.readlines())
+        if not resp2:
+            continue
+        else:
+            break
+
+    assert "No such file or directory" not in resp2
+
+    ssh.close()
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDtcp1to2
+def test_TCP23_from_outside_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+
+    # 1. transfer server file
+    cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"Pytest_server.py ubuntu@{app_jb_ip}:/home/ubuntu/."
+    os.popen(cmd1).read()
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@10.0.1.101:/home/ubuntu/.'"
+    os.popen(cmd2).read()
+
+    # 2. run server file
+    cmd_k = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+            f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+            "ubuntu@10.0.1.101 \'sudo pkill python3\''"
+
+    os.popen(cmd_k).read()
+
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@10.0.1.101 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
+
+    os.popen(cmd3).read()
+
+    # 3. test
+    test = f"""
+import socket
+s=socket.socket()
+s.connect(("{app_ip}",23))
+s.send("Yijun is coming".encode())
+msg = s.recv(1024)
+print(msg)
+    """
+    with open("test.py", "w+") as f:
+        f.write(test)
+
+    cmd4 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"test.py ubuntu@{app_jb_ip}:/home/ubuntu/."
+    os.popen(cmd4).read()
+
+    cmd5 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo pkill python3;python3 test.py'"
+    resp = os.popen(cmd5).read()
+
+    assert "[Pytest]TCP:23 is back!" in resp
+
+    # # terminate server
+    cmd6 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo rm -rf test.py'"
+    os.popen(cmd6).read()
+
+    cmd7 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@10.0.1.101 \'sudo pkill python3\''"
+
+    os.popen(cmd7).read()
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDtcp2to1
+def test_TCP23_from_inside_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+
+    # 1. transfer server file
+    cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"Pytest_server.py ubuntu@{app_jb_ip}:/home/ubuntu/."
+    os.popen(cmd1).read()
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@10.0.1.101:/home/ubuntu/.'"
+    os.popen(cmd2).read()
+
+    # 2. run server file
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo pkill python3;sudo screen -d -m sudo python3 Pytest_server.py'"
+
+    os.popen(cmd3).read()
+
+    # 3. test
+    test = f"""
+import socket
+s=socket.socket()
+s.connect(("{app_jb_ip}",23))
+s.send("Yijun is coming".encode())
+msg = s.recv(1024)
+print(msg)
+    """
+    with open("test.py", "w+") as f:
+        f.write(test)
+
+    cmd4 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"test.py ubuntu@{app_jb_ip}:/home/ubuntu/."
+    os.popen(cmd4).read()
+
+    cmd4_2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+             f"ubuntu@{app_jb_ip} 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+             "test.py ubuntu@10.0.1.101:/home/ubuntu/.'"
+
+    os.popen(cmd4_2).read()
+
+    cmd5 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@10.0.1.101 \'sudo pkill python3;python3 test.py\''"
+    resp = os.popen(cmd5).read()
+
+    assert "[Pytest]TCP:23 is back!" in resp
+
+    # # terminate server
+    cmd6 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo rm -rf test.py'"
+    os.popen(cmd6).read()
+
+    cmd6_2 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+             f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+             "ubuntu@10.0.1.101 \'sudo rm -rf test.py\''"
+    os.popen(cmd6_2).read()
+
+    cmd7 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo pkill python3'"
+
+    os.popen(cmd7).read()
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDudpYijun
+def test_UDP666_FTD(local_run):
+    # if "aws_obj" in globals():
+    #     app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
+    #     asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+    #     asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
+    #     app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
+    #
+    # else:
+    #     aws_obj = aws(record=False)
+    #     app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
+    #     asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
+    #     asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
+    #     app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
+    #
+    # app_jb_ip = app_jb["public_ip"]
+    # asa_jb_ip = asa_jb["public_ip"]
+    # asa_ip = asa["public_ip"]
+    # app_ip = app["public_ip"]
+
+    pp_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+
+    # 1. transfer server file
+    cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"Pytest_server.py ubuntu@{app_jb_ip}:/home/ubuntu/."
+    os.popen(cmd1).read()
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@10.0.1.101:/home/ubuntu/.'"
+    os.popen(cmd2).read()
+
+    # 2. run server file
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@10.0.1.101 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
+
+    os.popen(cmd3).read()
+
+    # 3. test
+    test = f"""
+import socket
+s=socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+s.sendto("Yijun is coming".encode(), ("{app_ip}", 666))
+msg = s.recvfrom(1024)
+print(msg[0])
+    """
+    with open("test.py", "w+") as f:
+        f.write(test)
+
+    cmd4 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"test.py ubuntu@{app_jb_ip}:/home/ubuntu/."
+    os.popen(cmd4).read()
+
+    cmd5 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo python3 test.py'"
+    resp = os.popen(cmd5).read()
+
+    assert "[Pytest]UDP:666 is back!" in resp
+
+    # # terminate server
+    cmd6 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo rm -rf test.py'"
+    os.popen(cmd6).read()
+
+    cmd7 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@10.0.1.101 \'sudo pkill python3\''"
+
+    os.popen(cmd7).read()
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDudp1to2
+def test_UDP_from_inside_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+
+    # 1. transfer server file
+    cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"Pytest_server.py ubuntu@{app_jb_ip}:/home/ubuntu/."
+    os.popen(cmd1).read()
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@10.0.1.101:/home/ubuntu/.'"
+    os.popen(cmd2).read()
+
+    # 2. run server file
+    cmd_k = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+            f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+            "ubuntu@10.0.1.101 \'sudo pkill python3\''"
+
+    os.popen(cmd_k).read()
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@10.0.1.101 \'sudo screen -d -m sudo python3 Pytest_server.py\''"
+
+    os.popen(cmd3).read()
+
+    # 3. test
+    test = f"""
+import socket
+s=socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+s.sendto("Yijun is coming".encode(), ("{app_ip}", 666))
+msg = s.recvfrom(1024)
+print(msg[0])
+    """
+    with open("test.py", "w+") as f:
+        f.write(test)
+
+    cmd4 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"test.py ubuntu@{app_jb_ip}:/home/ubuntu/."
+    os.popen(cmd4).read()
+
+    cmd5 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo pkill python3;python3 test.py'"
+    resp = os.popen(cmd5).read()
+
+    assert "[Pytest]UDP:666 is back!" in resp
+
+    # # terminate server
+    cmd6 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo rm -rf test.py'"
+    os.popen(cmd6).read()
+
+    cmd7 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@10.0.1.101 \'sudo pkill python3\''"
+
+    os.popen(cmd7).read()
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDudp2to1
+def test_UDP_from_outside_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+
+    # 1. transfer server file
+    cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"Pytest_server.py ubuntu@{app_jb_ip}:/home/ubuntu/."
+    os.popen(cmd1).read()
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "Pytest_server.py ubuntu@10.0.1.101:/home/ubuntu/.'"
+    os.popen(cmd2).read()
+
+    # 2. run server file
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo pkill python3;sudo screen -d -m sudo python3 Pytest_server.py'"
+
+    os.popen(cmd3).read()
+
+    # 3. test
+    test = f"""
+import socket
+s=socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+s.sendto("Yijun is coming".encode(), ("{app_jb_ip}", 666))
+msg = s.recvfrom(1024)
+print(msg[0])
+    """
+    with open("test.py", "w+") as f:
+        f.write(test)
+
+    cmd4 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"test.py ubuntu@{app_jb_ip}:/home/ubuntu/."
+    os.popen(cmd4).read()
+
+    cmd4_2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+             f"ubuntu@{app_jb_ip} 'scp -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+             "test.py ubuntu@10.0.1.101:/home/ubuntu/.'"
+    os.popen(cmd4_2).read()
+
+    cmd5 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           "ubuntu@10.0.1.101 \'sudo pkill python3;python3 test.py\''"
+    resp = os.popen(cmd5).read()
+    assert "[Pytest]UDP:666 is back!" in resp
+
+    # # terminate server
+    cmd6 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo rm -rf test.py'"
+    os.popen(cmd6).read()
+
+    cmd6_2 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+             f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+             "ubuntu@10.0.1.101 \'sudo rm -rf test.py\''"
+    os.popen(cmd6_2).read()
+
+    cmd7 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo pkill python3'"
+
+    os.popen(cmd7).read()
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDiperfudp
+def test_iperf_udp_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+
+    cmd1 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo screen -d -m sudo iperf -s -u'"
+
+    os.popen(cmd1).read()
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo iperf -c {app_jb_ip} -u\''"
+
+    res = os.popen(cmd2).read()
+
+    bd = re.compile(" ([\d.]+?) (?=MBytes)").findall(res)[0]
+    assert float(bd) > 0
+
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo pkill iperf'"
+
+    os.popen(cmd3).read()
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDiperfudpreverse
+def test_iperf_udp_reverse_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+
+    cmd1 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo screen -d -m sudo iperf -s -u\''"
+
+    os.popen(cmd1).read()
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo iperf -c {app_ip} -u;'"
+
+    res = os.popen(cmd2).read()
+    print("Iperf result:\n", res)
+
+    bd = re.compile(" ([\d.]+?) (?=MBytes)").findall(res)[0]
+    assert float(bd) > 0
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo pkill iperf\''"
+
+    os.popen(cmd3).read()
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDiperftcp
+def test_iperf_tcp_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+
+
+    cmd1 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo screen -d -m sudo iperf -s'"
+
+    os.popen(cmd1).read()
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo iperf -c {app_jb_ip}\''"
+
+    res = os.popen(cmd2).read()
+    print(res)
+    try:
+        bd = re.compile(" ([\d.]+?) (?=MBytes)").findall(res)[0]
+    except:
+        bd = re.compile(" ([\d.]+?) (?=GBytes)").findall(res)[0]
+
+    assert float(bd) > 0
+
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo pkill iperf'"
+
+    os.popen(cmd3).read()
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDiperftcpreverse
+def test_iperf_tcp_reverse_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+
+    cmd1 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo screen -d -m sudo iperf -s\''"
+
+    os.popen(cmd1).read()
+
+    cmd2 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'sudo iperf -c {app_ip}'"
+
+    res = os.popen(cmd2).read()
+
+    print("Iperf result:\n", res)
+    try:
+        bd = re.compile(" ([\d.]+?) (?=MBytes)").findall(res)[0]
+    except:
+        bd = re.compile(" ([\d.]+?) (?=GBytes)").findall(res)[0]
+    assert float(bd) > 0
+
+    cmd3 = "ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+           f"ubuntu@10.0.1.101 \'sudo pkill iperf\''"
+
+    os.popen(cmd3).read()
+
+
+@pytest.mark.counter
+def test_udp_counter(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
+    cmd1 = "clear asp drop"
+    cmd2 = "show asp drop frame geneve-invalid-udp-checksum"
+
+    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
+    asa_config(asa_address, cmd1)
+
+    send(IP(dst="20.0.1.101") / UDP(sport=20001, dport=6081, chksum=0) / b'\x08\x00\x08')
+
+    _, res = asa_config(asa_address, cmd2)
+    assert "geneve-invalid-udp-checksum" in res
 
 @pytest.mark.updowngrade
 def test_image_replacement(keyFile, trs):
@@ -2147,7 +2687,6 @@ def test_image_replacement(keyFile, trs):
     assert temp == old_config
 
     pass
-
 
 if __name__ == '__main__':
     pytest.main(["-q", "-s", "-ra", "test_geneve.py"])
