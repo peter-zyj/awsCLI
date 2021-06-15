@@ -87,6 +87,13 @@ def ftd_hack(ftd_address, debug=False):
         conn = pexpect.spawn(ftd_address)
     conn, result, cont = Ocean_reply(conn, debug=debug) #firstlogin, finish all password
 
+    go2fxos(conn, debug=debug)
+    conn.sendline("configure manager delete")
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+    time.sleep(5)
+    conn.sendline("configure manager add 20.0.250.13 cisco")
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+
     go2ftd(conn, debug=debug)
 
     conn.sendline("en")
@@ -96,6 +103,7 @@ def ftd_hack(ftd_address, debug=False):
     conn, result, cont = Ocean_reply(conn, debug=debug)
     p = "Serial Number: (.*)"
     sn = re.compile(p).findall(cont)[0].strip()
+    if debug: print(sn)
 
     go2expert(conn, debug=debug)
 
@@ -103,16 +111,29 @@ def ftd_hack(ftd_address, debug=False):
     conn.sendline(cli)
     conn, result, cont = Ocean_reply(conn, debug=debug)
 
+    if debug:
+        cli = "cat /mnt/disk0/enable_configure"
+        conn.sendline(cli)
+        conn, result, cont = Ocean_reply(conn, debug=debug)
+        print (cont)
+
     go2ftd(conn, debug=debug)
 
     conn.sendline("en")
     conn, result, cont = Ocean_reply(conn, debug=debug)
+    conn.sendline("")
+    Ocean_reply(conn, debug=debug)
 
     conn.sendline(f"debug menu file-system 7")
     conn, result, cont = Ocean_reply(conn, debug=debug)
+    conn.sendline("")
+    Ocean_reply(conn, debug=debug)
 
     conn.sendline(f"conf term")
     conn, result, cont = Ocean_reply(conn, debug=debug)
+    conn.sendline("")
+    conn, result, cont = Ocean_reply(conn, debug=debug)
+
 
     if "firepower(config)#" not in cont:
         print("[Error][ftd_hack] failed to hack")
@@ -553,8 +574,10 @@ def local_run(show=False):
     asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE", show=show)
     asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE", show=show)
     app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE", show=show)
-    ftd = aws_obj.blind("Pytest-EC2-FTD", "EC2INSTANCE", show=show)
-    fmc = aws_obj.blind("Pytest-EC2-FMC", "EC2INSTANCE", show=show)
+    ftd = aws_obj.blind("Test-Hybrid-EC2-FTD", "EC2INSTANCE", show=show)
+    fmc = aws_obj.blind("Test-Hybrid-EC2-FMC", "EC2INSTANCE", show=show)
+    # ftd = aws_obj.blind("Pytest-EC2-FTD", "EC2INSTANCE", show=show)
+    # fmc = aws_obj.blind("Pytest-EC2-FMC", "EC2INSTANCE", show=show)
 
     app_jb_ip = app_jb["public_ip"]
     asa_jb_ip = asa_jb["public_ip"]
@@ -1226,6 +1249,7 @@ Pytest-EC2-FTD(EC2INSTANCE):
 
 Pytest-AMI-FTD(AMICOPY):
   source-image-id: ami-08473057344d9dd0d
+  # source-image-id: ami-074379cc45251cfae
   source-region: us-west-2
   region: us-west-1
   name: ftdv
@@ -1330,6 +1354,220 @@ Pytest_NWInterface_FTD_3_Bind(BIND):
 
     obj.load_deployment(content=cont)
     obj.start_deployment()
+
+@pytest.mark.reFTD2
+def test_replace_FTD2():
+    cont = '''
+Del_Test-Hybrid_NWInterface_FTD1(TERMINATION):
+  type: NETWORK_INTERFACE
+  action:
+    bind_to:
+        - Del_Test-Hybrid-EC2-FTD
+Del_Test-Hybrid_NWInterface_FTD2(TERMINATION):
+  type: NETWORK_INTERFACE
+  action:
+    bind_to:
+        - Del_Test-Hybrid-EC2-FTD
+Del_Test-Hybrid_NWInterface_FTD3(TERMINATION):
+  type: NETWORK_INTERFACE
+  action:
+    bind_to:
+        - Del_Test-Hybrid-EC2-FTD
+
+Del_Test-Hybrid_SUB_Sec_2_DATA(TERMINATION):
+  type: SUBNET
+  action:
+    bind_to:
+        - Del_Test-Hybrid_NWInterface_FTD2
+Del_Test-Hybrid_SUB_Sec_3_DATA(TERMINATION):
+  type: SUBNET
+  action:
+    bind_to:
+        - Del_Test-Hybrid_NWInterface_FTD3
+
+Del_Test-Hybrid-AMI-FTD(TERMINATION):
+  # id: ami-0d846ab5ee3c4de5a
+  type: AMICOPY
+  action:
+    bind_to:
+        - Del_Test-Hybrid-EC2-FTD
+
+Del_Test-Hybrid-EC2-FTD(TERMINATION):
+  # id: i-0dfac8028eeb2df7c
+  type: EC2INSTANCE
+
+Test-Hybrid-EC2-FTD(EC2INSTANCE):
+  image-id: Test-Hybrid-AMI-FTD
+  instance-type: d2.2xlarge
+  key-name: testDog
+  security-group-ids: Test-Hybrid_SG_Sec_MGMT
+  count: 1
+  subnet-id: Test-Hybrid_SUB_Sec_MGMT
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.12
+  action:
+    query_from:
+        - Test-Hybrid_SUB_Sec_MGMT
+        - Test-Hybrid_SG_Sec_MGMT
+    bind_to:
+        - Test-Hybrid-AMI-FTD
+        - Del_Test-Hybrid-EC2-FTD
+    cleanUP: True
+
+Test-Hybrid-AMI-FTD(AMICOPY):
+  source-image-id: ami-08473057344d9dd0d
+  # source-image-id: ami-074379cc45251cfae
+  source-region: us-west-2
+  region: us-west-1
+  name: ftdv
+  action:
+    bind_to:
+        - Del_Test-Hybrid-AMI-FTD
+    cleanUP: True
+
+Test-Hybrid_SUB_Sec_2_DATA(SUBNET):
+  vpc-id: Test-Hybrid_VPC_Sec
+  cidr-block: 20.0.2.0/24
+  availability-zone: '{Test-Hybrid_SUB_App_1_MGMT}'
+  action:
+    query_from:
+      - Test-Hybrid_VPC_Sec
+      - Test-Hybrid_SUB_App_1_MGMT
+    bind_to:
+      - Del_Test-Hybrid_SUB_Sec_2_DATA
+      - Test-Hybrid_SUB_Sec_3_DATA
+    cleanUP: True
+Test-Hybrid_SUB_Sec_3_DATA(SUBNET):
+  vpc-id: Test-Hybrid_VPC_Sec
+  cidr-block: 20.0.3.0/24
+  availability-zone: '{Test-Hybrid_SUB_App_1_MGMT}'
+  action:
+    query_from:
+      - Test-Hybrid_VPC_Sec
+      - Test-Hybrid_SUB_App_1_MGMT
+    bind_to:
+      - Del_Test-Hybrid_SUB_Sec_3_DATA
+    cleanUP: True
+
+Test-Hybrid_NWInterface_FTD1(NETWORK_INTERFACE):
+  subnet-id: Test-Hybrid_SUB_Sec_DATA
+  description: pytest Data Network for ASA
+  groups: Test-Hybrid_SG_Sec_DATA
+  private-ip-address: 20.0.1.102
+  action:
+    query_from:
+        - Test-Hybrid_SUB_Sec_DATA
+        - Test-Hybrid_SG_Sec_DATA
+    bind_to:
+        - Del_Test-Hybrid_NWInterface_FTD1
+    cleanUP: True
+Test-Hybrid_NWInterface_FTD2(NETWORK_INTERFACE):
+  subnet-id: Test-Hybrid_SUB_Sec_2_DATA
+  description: Test-Hybrid Data Network2 for ASA
+  groups: Test-Hybrid_SG_Sec_DATA
+  private-ip-address: 20.0.2.102
+  action:
+    query_from:
+        - Test-Hybrid_SG_Sec_DATA
+    bind_to:
+        - Test-Hybrid_SUB_Sec_2_DATA
+        - Del_Test-Hybrid_NWInterface_FTD2
+    cleanUP: True
+Test-Hybrid_NWInterface_FTD3(NETWORK_INTERFACE):
+  subnet-id: Test-Hybrid_SUB_Sec_3_DATA
+  description: Test-Hybrid Data Network3 for ASA
+  groups: Test-Hybrid_SG_Sec_DATA
+  private-ip-address: 20.0.3.102
+  action:
+    query_from:
+        - Test-Hybrid_SG_Sec_DATA
+    bind_to:
+        - Test-Hybrid_SUB_Sec_3_DATA
+        - Del_Test-Hybrid_NWInterface_FTD3
+    cleanUP: True
+
+Test-Hybrid_NWInterface_FTD_1_Bind(BIND):
+  network-interface-id: Test-Hybrid_NWInterface_FTD1
+  instance-id: Test-Hybrid-EC2-FTD
+  device-index: 1
+  action:
+    bind_to:
+      - Test-Hybrid_NWInterface_FTD1
+      - Test-Hybrid-EC2-FTD
+      - Test-Hybrid_NWInterface_FTD_3_Bind
+    cleanUP: True
+Test-Hybrid_NWInterface_FTD_2_Bind(BIND):
+  network-interface-id: Test-Hybrid_NWInterface_FTD2
+  instance-id: Test-Hybrid-EC2-FTD
+  device-index: 2
+  action:
+    bind_to:
+      - Test-Hybrid_NWInterface_FTD2
+      - Test-Hybrid-EC2-FTD
+      - Test-Hybrid_NWInterface_FTD_1_Bind
+    cleanUP: True
+Test-Hybrid_NWInterface_FTD_3_Bind(BIND):
+  network-interface-id: Test-Hybrid_NWInterface_FTD3
+  instance-id: Test-Hybrid-EC2-FTD
+  device-index: 3
+  action:
+    bind_to:
+      - Test-Hybrid_NWInterface_FTD3
+      - Test-Hybrid-EC2-FTD
+    cleanUP: True
+'''
+    obj = aws(record=False, debug=True)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+@pytest.mark.reFMC2
+def test_replace_FMC2():
+    cont = '''
+Del_Test-Hybrid-EC2-FMC(TERMINATION):
+  # id: i-0dfac8028eeb2df7c
+  type: EC2INSTANCE
+
+Del_Test-Hybrid-AMI-FMC(TERMINATION):
+  # id: ami-0d846ab5ee3c4de5a
+  type: AMICOPY
+
+Test-Hybrid-EC2-FMC(EC2INSTANCE):
+  image-id: Test-Hybrid-AMI-FMC
+  instance-type: d2.2xlarge
+  key-name: testDog
+  security-group-ids: Test-Hybrid_SG_Sec_MGMT
+  count: 1
+  subnet-id: Test-Hybrid_SUB_Sec_MGMT
+  associate-public-ip-address: None
+  private-ip-address: 20.0.250.13
+  action:
+    query_from:
+        - Test-Hybrid_SUB_Sec_MGMT
+        - Test-Hybrid_SG_Sec_MGMT
+    bind_to:
+        - Test-Hybrid-AMI-FMC
+        - Del_Test-Hybrid-EC2-FMC
+    cleanUP: True
+
+Test-Hybrid-AMI-FMC(AMICOPY):
+  source-image-id: ami-0e8f534eeea33536b
+  source-region: us-west-2
+  region: us-west-1
+  name: fmcv
+  action:
+    bind_to:
+        - Del_Test-Hybrid-AMI-FMC
+    cleanUP: True 
+'''
+    obj = aws(record=False, debug=True)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+
 
 @pytest.mark.replace
 @pytest.mark.reFMC
@@ -1735,13 +1973,6 @@ def test_ftd_backdoor(local_run):
 
     assert "firepower(config)#" in cont
 
-@pytest.mark.FTDconfig
-def test_ftd_config(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
-    ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
-    load_ftd_config(ftd_address, debug=False)
-
-
 @pytest.mark.FMCreg
 def test_fmc_reg(local_run):
 # def test_fmc_reg():
@@ -1750,7 +1981,7 @@ def test_fmc_reg(local_run):
 
     timer = 5
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
-    # fmc_ip = "13.56.212.185"
+    # fmc_ip = "52.53.155.170"
     driver = webdriver.Chrome("/Users/yijunzhu/PycharmProjects/iTest/Geneve/chromedriver")
 
     try:
@@ -1779,7 +2010,7 @@ def test_fmc_reg(local_run):
     driver.find_element(By.CSS_SELECTOR, "#gwt-debug-device_management-add_dropdown-add .x-btn-text").click()
     driver.find_element(By.ID, "gwt-debug-device_management-device-add").click()
     time.sleep(timer)
-    driver.find_element(By.ID, "gwt-debug-device_registration-host-text_field-input").send_keys("20.0.250.22")
+    driver.find_element(By.ID, "gwt-debug-device_registration-host-text_field-input").send_keys("20.0.250.12")
 
 
     driver.find_element(By.ID, "gwt-debug-device_registration-display_name-text_field-input").click()
@@ -1809,7 +2040,13 @@ def test_fmc_reg(local_run):
     time.sleep(timer)
     driver.find_element(By.CSS_SELECTOR, "#gwt-debug-device_registration-register-button .x-btn-text").click()
 
-    time.sleep(600)
+    time.sleep(5)
+
+@pytest.mark.FTDconfig
+def test_ftd_config(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+    ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
+    load_ftd_config(ftd_address, debug=False)
 
 @pytest.mark.FTDbasic1to2
 def test_Basic_PingGoogle_FTD(local_run):

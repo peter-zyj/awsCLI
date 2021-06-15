@@ -586,7 +586,7 @@ if __name__ == "__main__":
     setting["config"] = cfg
     setting["credentials"] = cda
 
-    obj = aws(setting, debug=False)
+    obj = aws(setting, debug=True)
     atexit.register(obj.close)
 
     import signal
@@ -602,5 +602,5 @@ if __name__ == "__main__":
     obj.start_deployment()
 
     print_color("~~~~~~~~~~~~~~~ Ready to Rock ~~~~~~~~~~~~~~", "pink")
-    time.sleep(1200)
+    # time.sleep(1200)
     obj.close()
