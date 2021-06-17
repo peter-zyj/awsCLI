@@ -72,6 +72,10 @@ def asa_config(asa_address, lines, debug=False) -> tuple:
     conn.sendline("conf term")
     conn, result, cont = Geneve_reply(conn)
 
+    # for line in lines.splitlines():
+    #     if line:
+    #         conn.sendline(line)
+    #         conn, result, cont = Ocean_reply(conn, debug=debug)
     conn.sendline(lines)
     conn, result, cont = Geneve_reply(conn, debug=debug)
 
@@ -162,8 +166,10 @@ def ftd_config(ftd_address, lines, debug=False) -> tuple:
     conn.sendline("conf term")
     conn, result, cont = Ocean_reply(conn, debug=debug)
 
-    conn.sendline(lines)
-    conn, result, cont = Ocean_reply(conn, debug=debug)
+    for line in lines.splitlines():
+        if line:
+            conn.sendline(line)
+            conn, result, cont = Ocean_reply(conn, debug=debug)
 
     conn.sendline("end")
     Ocean_reply(conn, debug=debug)
@@ -248,14 +254,41 @@ def setup(request):
 
 def Basic_miss_config():
     print("####Basic_miss_config test####")
+
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run()
+
+    cmd1 = "sudo ifconfig eth1 down"
+    cmd2 = "sudo ifconfig eth1 10.0.1.10/24"
+    cmd3 = "sudo ifconfig eth1 up"
+
     import paramiko
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    jb_ip = aws_obj.fetch_address("Test-1-169-EC2-App-JB")
+    ssh2 = paramiko.SSHClient()
+    ssh2.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    ssh.connect(jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+    ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+    ssh2.connect(asa_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+
+    _, stdout, _ = ssh.exec_command(f"{cmd1};{cmd2};{cmd3}")
+    stdout.channel.recv_exit_status()
+
+    _, stdout, _ = ssh2.exec_command(f"{cmd1};{cmd2};{cmd3}")
+    stdout.channel.recv_exit_status()
+
+    ssh.close()
+    ssh2.close()
+
+    #~~~~~~~~~~
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    # jb_ip = aws_obj.fetch_address("Test-1-169-EC2-App-JB")
+
+    ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
 
     while True:
         _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
@@ -2599,20 +2632,102 @@ def test_iperf_tcp_reverse_FTD(local_run):
 
     os.popen(cmd3).read()
 
-
-@pytest.mark.counter
-def test_udp_counter(local_run):
-    app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
+@pytest.mark.geneveFTD
+@pytest.mark.FTDcounter
+def test_udp_counter_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
     cmd1 = "clear asp drop"
     cmd2 = "show asp drop frame geneve-invalid-udp-checksum"
 
-    asa_address = f"ssh -i 'testDog.pem' admin@{asa_ip}"
-    asa_config(asa_address, cmd1)
+    ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
+    ftd_config(ftd_address, cmd1)
 
     send(IP(dst="20.0.1.101") / UDP(sport=20001, dport=6081, chksum=0) / b'\x08\x00\x08')
 
-    _, res = asa_config(asa_address, cmd2)
+    _, res = ftd_config(ftd_address, cmd2)
     assert "geneve-invalid-udp-checksum" in res
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDreset
+def test_tcp_counter_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+
+    cmd = f"ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+          f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+          f"ubuntu@10.0.1.101 \'sudo screen -d -m ssh root@{asa_jb_ip}\''"
+
+    os.popen(cmd).read()
+
+    cmd2 = "clear conn address 10.0.1.101"
+    cmd3 = "show asp drop"
+    cmd1 = "clear asp drop"
+
+    ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
+    ftd_config(ftd_address, cmd1)
+    ftd_config(ftd_address, cmd2)
+
+    cmd = f"ssh  -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+          f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
+          f"ubuntu@10.0.1.101 \'sudo pkill screen\''"
+
+    os.popen(cmd).read()
+
+    _, res = ftd_config(ftd_address, cmd3)
+
+    assert "tcp-not-syn" in res
+
+@pytest.mark.FTDlogserver
+def test_log_server_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+
+    config = '''
+logging enable
+logging buffer-size 52428800
+logging buffered debugging
+logging trap debugging
+logging host data-interface 20.0.1.10
+'''
+    ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
+    ftd_config(ftd_address, config)
+
+    import paramiko
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    ssh2 = paramiko.SSHClient()
+    ssh2.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+    ssh2.connect(asa_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+
+    while True:
+        _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'ping 8.8.8.8 -c 10'")
+        stdout.channel.recv_exit_status()
+        resp1 = "".join(stdout.readlines())
+        if not resp1:
+            continue
+        else:
+            break
+
+    assert "0% packet loss" in resp1
+
+    _, stdout, _ = ssh2.exec_command("sudo systemctl restart syslog")
+    stdout.channel.recv_exit_status()
+    while True:
+        _, stdout, _ = ssh2.exec_command("tail -n 100 /var/log/syslog")
+        stdout.channel.recv_exit_status()
+        resp2 = "".join(stdout.readlines())
+        if not resp2:
+            continue
+        else:
+            break
+
+    assert "8.8.8.8" in resp2
+
+    ssh.close()
+    ssh2.close()
 
 @pytest.mark.updowngrade
 def test_image_replacement(keyFile, trs):
