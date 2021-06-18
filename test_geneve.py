@@ -2676,6 +2676,7 @@ def test_tcp_counter_FTD(local_run):
 
     assert "tcp-not-syn" in res
 
+@Failed
 @pytest.mark.FTDlogserver
 def test_log_server_FTD(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
@@ -2728,6 +2729,86 @@ logging host data-interface 20.0.1.10
 
     ssh.close()
     ssh2.close()
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDgenevedebug
+def test_debug_geneve_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+    cmd1 = "debug geneve encapsulation"
+    cmd2 = "debug geneve encapsulation 4"
+    cmd3 = "debug geneve decapsulation"
+    cmd4 = "debug geneve decapsulation 4"
+    cmd5 = "debug geneve all"
+    cmd_clean = "unde all"
+    cmd_show = "show debug"
+
+    ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
+
+    import pexpect
+
+    conn = pexpect.spawn(ftd_address)
+    Ocean_reply(conn)
+
+    go2ftd(conn)
+
+    conn.sendline("en")
+    Ocean_reply(conn)
+
+    conn.sendline(cmd_clean)
+    Ocean_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Ocean_reply(conn)
+    assert "debug geneve" not in res
+
+    conn.sendline(cmd_clean)
+    Ocean_reply(conn)
+    conn.sendline(cmd1)
+    Ocean_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Ocean_reply(conn)
+    assert "debug geneve encapsulation enabled at level 1" in res
+
+    conn.sendline(cmd_clean)
+    Ocean_reply(conn)
+    conn.sendline(cmd2)
+    Ocean_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Ocean_reply(conn)
+    assert "debug geneve encapsulation enabled at level 4" in res
+
+    conn.sendline(cmd_clean)
+    Ocean_reply(conn)
+    conn.sendline(cmd3)
+    Ocean_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Ocean_reply(conn)
+    assert "debug geneve decapsulation enabled at level 1" in res
+
+    conn.sendline(cmd_clean)
+    Ocean_reply(conn)
+    conn.sendline(cmd4)
+    Ocean_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Ocean_reply(conn)
+    assert "debug geneve decapsulation enabled at level 4" in res
+
+    conn.sendline(cmd_clean)
+    Ocean_reply(conn)
+    conn.sendline(cmd5)
+    Ocean_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Ocean_reply(conn)
+    assert "debug geneve encapsulation enabled at level 1" in res
+    assert "debug geneve decapsulation enabled at level 1" in res
+
+    conn.sendline(cmd_clean)
+    Ocean_reply(conn)
+    conn.sendline(cmd_show)
+    _, _, res = Ocean_reply(conn)
+    assert "debug geneve" not in res
+
+    conn.close()
+    del conn
 
 @pytest.mark.updowngrade
 def test_image_replacement(keyFile, trs):

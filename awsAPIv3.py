@@ -593,12 +593,12 @@ if __name__ == "__main__":
     def signal_handler(signal, frame):
         print('Someone pressed Ctrl+C!')
         if obj:
-            obj.close(exec=False)
+            obj.close(exec=True)
         sys.exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    res = obj.load_deployment("aws_tb_pytest_west_1_hybrid.config")
+    res = obj.load_deployment("aws_tb_pytest_east_1_hybrid.config")
     obj.start_deployment()
 
     print_color("~~~~~~~~~~~~~~~ Ready to Rock ~~~~~~~~~~~~~~", "pink")
