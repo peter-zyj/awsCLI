@@ -2676,7 +2676,7 @@ def test_tcp_counter_FTD(local_run):
 
     assert "tcp-not-syn" in res
 
-@Failed
+#Failed
 @pytest.mark.FTDlogserver
 def test_log_server_FTD(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
