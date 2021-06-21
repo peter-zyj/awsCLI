@@ -607,8 +607,8 @@ def local_run(show=False):
     asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE", show=show)
     asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE", show=show)
     app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE", show=show)
-    ftd = aws_obj.blind("Test-Hybrid-EC2-FTD", "EC2INSTANCE", show=show)
-    fmc = aws_obj.blind("Test-Hybrid-EC2-FMC", "EC2INSTANCE", show=show)
+    ftd = aws_obj.blind("Pytest-EC2-FTD", "EC2INSTANCE", show=show)
+    fmc = aws_obj.blind("Pytest-EC2-FMC", "EC2INSTANCE", show=show)
     # ftd = aws_obj.blind("Pytest-EC2-FTD", "EC2INSTANCE", show=show)
     # fmc = aws_obj.blind("Pytest-EC2-FMC", "EC2INSTANCE", show=show)
 
@@ -1206,7 +1206,7 @@ def test_stats(local_run):
 @pytest.mark.capture
 def test_capture(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
-    cmd0 = "no cap g"
+    cmd0 = "no capture g"
     cmd1 = "clear cap /all"
     cmd2 = "cap g int ge trace"
     cmd3 = "show capture g | in icmp: echo request"
@@ -1220,7 +1220,7 @@ def test_capture(local_run):
     _, cont3 = asa_config(asa_address, cmd3)
     pNum = int(re.compile("\d+: ").findall(cont3)[0].strip().split(":")[0])
     cmd4 = f"show capture g trace packet-number {pNum}"
-    cmd5 = "no cap g"
+    cmd5 = "no capture g"
     _, cont4 = asa_config(asa_address, cmd4)
     assert "Action: allow" in cont4
     asa_config(asa_address, cmd5)
@@ -2087,11 +2087,12 @@ def test_ftd_config(local_run):
     load_ftd_config(ftd_address, debug=False)
 
 @pytest.mark.geneveFTD
+@pytest.mark.FTDmetaserver
 @pytest.mark.FTDbasic1to2
 def test_Basic_PingGoogle_FTD(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
-    test_reg_ftd()
-    print('WAIT for FTD register', wait(90))
+    # test_reg_ftd()
+    # print('WAIT for FTD register', wait(90))
     import paramiko
 
     ssh = paramiko.SSHClient()
@@ -2809,6 +2810,59 @@ def test_debug_geneve_FTD(local_run):
 
     conn.close()
     del conn
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDstatistics
+def test_stats_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+    cmd1 = "show interface vni 1"
+    cmd2 = "show nve 1"
+    ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
+
+    _, cont1_1 = ftd_config(ftd_address, cmd1)
+    _, cont2_1 = ftd_config(ftd_address, cmd2)
+    p1 = "(.*) packets input"
+    p2 = "(.*) packets output"
+
+    output_cmd1_1 = int(re.compile(p1).findall(cont1_1)[0])
+    output_cmd2_1 = int(re.compile(p2).findall(cont2_1)[0])
+
+    test_Basic_PingGoogle_FTD(local_run)
+
+    _, cont1_2 = ftd_config(ftd_address, cmd1)
+    _, cont2_2 = ftd_config(ftd_address, cmd2)
+
+    output_cmd1_2 = int(re.compile(p1).findall(cont1_2)[0])
+    output_cmd2_2 = int(re.compile(p2).findall(cont2_2)[0])
+
+    assert output_cmd1_2 > output_cmd1_1
+    assert output_cmd2_2 > output_cmd2_1
+
+@pytest.mark.geneveFTD
+@pytest.mark.FTDcapture
+def test_capture_FTD(local_run):
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+    cmd0 = "no capture g"
+    cmd1 = "clear cap /all"
+    cmd2 = "cap g int ge trace"
+    cmd3 = "show capture g | in icmp: echo request"
+    ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
+
+    ftd_config(ftd_address, cmd0)
+    ftd_config(ftd_address, cmd1)
+    ftd_config(ftd_address, cmd2)
+
+    test_Basic_PingGoogle_FTD(local_run)
+    time.sleep(1)
+    _, cont3 = ftd_config(ftd_address, cmd3)
+
+    pNum = int(re.compile("\d+: ").findall(cont3)[0].strip().split(":")[0])
+
+    cmd4 = f"show capture g trace packet-number {pNum} | in Action:"
+    cmd5 = "no capture g"
+    _, cont4 = ftd_config(ftd_address, cmd4)
+    assert "Action: allow" in cont4
+    ftd_config(ftd_address, cmd5)
 
 @pytest.mark.updowngrade
 def test_image_replacement(keyFile, trs):
