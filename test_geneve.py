@@ -2677,7 +2677,7 @@ def test_tcp_counter_FTD(local_run):
 
     assert "tcp-not-syn" in res
 
-#Failed
+@pytest.mark.geneveFTD
 @pytest.mark.FTDlogserver
 def test_log_server_FTD(local_run):
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
@@ -2688,6 +2688,7 @@ logging buffer-size 52428800
 logging buffered debugging
 logging trap debugging
 logging host data-interface 20.0.1.10
+logging message 302020
 '''
     ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
     ftd_config(ftd_address, config)
