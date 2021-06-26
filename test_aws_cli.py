@@ -1598,6 +1598,39 @@ Test-EC2-App-JB(EC2INSTANCE):
     obj.load_deployment(content=cont)
     obj.start_deployment()
 
+@pytest.mark.database
+def test_database():
+    cont ='''
+Influxdb_Datbase(EC2INSTANCE):
+  image-id: ami-031b673f443c2172c
+  instance-type: t2.micro
+  key-name: testDog
+  security-group-ids: Test-1-169_SG_Sec_MGMT
+  count: 1
+  subnet-id: Test-1-169_SUB_Sec_MGMT
+  associate-public-ip-address: None
+  action:
+    query_from:
+      - Test-1-169_SUB_Sec_MGMT
+      - Test-1-169_SG_Sec_MGMT
+    cmd:
+      - sudo apt install net-tools
+      - sudo apt update
+      - sudo hostname influxdb-datbase
+      - sudo wget https://dl.influxdata.com/influxdb/releases/influxdb2-2.0.7-amd64.deb
+      - sudo dpkg -i influxdb2-2.0.7-amd64.deb
+      - sudo systemctl start influxdb
+    transfer:
+      - from:./testDog.pem to:/home/ubuntu/.
+    cleanUP: False
+'''
+    obj = aws(record=False, debug=True)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+
 @pytest.mark.asa
 def test_ASA():
     cont ='''

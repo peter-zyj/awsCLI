@@ -1186,6 +1186,8 @@ class EC2INSTANCE(resource):
                 self.creation = re.sub(r"--security-group-ids .*?(?=( --|$))", str_sgID, self.creation)
         else:
             sg_id = self.raw_yaml["security-group-ids"].strip()
+            if sg_id in self.query_dict:
+                sg_id = self.query_dict[sg_id]
 
         resp = cli_handler.raw_cli_res(self.creation)
 

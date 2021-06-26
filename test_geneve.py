@@ -806,7 +806,7 @@ def test_UDP_from_outside(local_run):
 
     # 3. test
     test = f"""
-import socket
+import socket,os
 s=socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 s.sendto("Yijun is coming".encode(), ("{app_jb_ip}", 666))
 msg = s.recvfrom(1024)
@@ -826,7 +826,8 @@ print(msg[0])
 
     cmd5 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
            f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@10.0.1.101 \'sudo pkill python3;python3 test.py\''"
+           "ubuntu@10.0.1.101 \'sudo python3 test.py; pkill python3\''"
+    print(cmd5)
     resp = os.popen(cmd5).read()
     assert "[Pytest]UDP:666 is back!" in resp
 
@@ -1288,7 +1289,7 @@ Pytest-EC2-FTD(EC2INSTANCE):
     cleanUP: True
 
 Pytest-AMI-FTD(AMICOPY):
-  source-image-id: ami-08473057344d9dd0d
+  source-image-id: ami-025ac61040bca3a8e
   # source-image-id: ami-074379cc45251cfae
   source-region: us-west-2
   region: us-west-1
@@ -2336,25 +2337,7 @@ print(msg)
 @pytest.mark.geneveFTD
 @pytest.mark.FTDudpYijun
 def test_UDP666_FTD(local_run):
-    # if "aws_obj" in globals():
-    #     app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
-    #     asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
-    #     asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
-    #     app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
-    #
-    # else:
-    #     aws_obj = aws(record=False)
-    #     app_jb = aws_obj.blind("Test-1-169-EC2-App-JB", "EC2INSTANCE")
-    #     asa_jb = aws_obj.blind("Test-1-169-EC2-ASA-JB", "EC2INSTANCE")
-    #     asa = aws_obj.blind("Test-1-169-EC2-ASA", "EC2INSTANCE")
-    #     app = aws_obj.blind("Test-1-169-EC2-App", "EC2INSTANCE")
-    #
-    # app_jb_ip = app_jb["public_ip"]
-    # asa_jb_ip = asa_jb["public_ip"]
-    # asa_ip = asa["public_ip"]
-    # app_ip = app["public_ip"]
-
-    pp_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
+    app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
 
     # 1. transfer server file
     cmd1 = "scp -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
@@ -2507,7 +2490,7 @@ print(msg[0])
 
     cmd5 = "ssh -i 'testDog.pem' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
            f"ubuntu@{app_jb_ip} 'ssh -i \'testDog.pem\' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null " \
-           "ubuntu@10.0.1.101 \'sudo pkill python3;python3 test.py\''"
+           "ubuntu@10.0.1.101 \'sudo python3 test.py; pkill python3\''"
     resp = os.popen(cmd5).read()
     assert "[Pytest]UDP:666 is back!" in resp
 
