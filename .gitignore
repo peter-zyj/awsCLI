@@ -14,3 +14,7 @@
 !aws_tb_pytest_west_1_hybrid.config
 !LICENSE
 !awsRunman.py
+!config.yaml
+!conftest.py
+!pytest.ini
+!Pytest_report_v2.py
