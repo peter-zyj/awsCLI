@@ -18,3 +18,5 @@
 !conftest.py
 !pytest.ini
 !Pytest_report_v2.py
+!lib_yijun.py
+!influxdb_yijun.py
