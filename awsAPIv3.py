@@ -589,13 +589,16 @@ if __name__ == "__main__":
     # cfg = {"default": {"region": "shanghai", "output": "json"}}
     # cda = {"default": {"access-id": "1234", "secret-id": "3456"}}
     home_dir = os.getenv("HOME")
-    with open(f"{home_dir}/.aws/config_auto", "r") as f:
-        cfg = f.read()
-    with open(f"{home_dir}/.aws/credentials_auto", "r") as f:
-        cda = f.read()
+    try:
+        with open(f"{home_dir}/.aws/config_auto", "r") as f:
+            cfg = f.read()
+        with open(f"{home_dir}/.aws/credentials_auto", "r") as f:
+            cda = f.read()
 
-    setting["config"] = cfg
-    setting["credentials"] = cda
+        setting["config"] = cfg
+        setting["credentials"] = cda
+    except:
+        pass
 
     obj = aws(setting, record=record, debug=True)
     atexit.register(obj.close)
