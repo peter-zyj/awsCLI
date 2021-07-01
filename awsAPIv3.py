@@ -574,6 +574,12 @@ class aws(object):
             return result
 
 if __name__ == "__main__":
+
+    if len(sys.argv) > 1:
+        config_file = sys.argv[1]
+    else:
+        config_file = "aws_tb_pytest_east_1_hybrid.config"
+
     setting = {}
     # cfg = {"default": {"region": "shanghai", "output": "json"}}
     # cda = {"default": {"access-id": "1234", "secret-id": "3456"}}
@@ -598,7 +604,7 @@ if __name__ == "__main__":
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    res = obj.load_deployment("aws_tb_pytest_east_1_hybrid.config")
+    res = obj.load_deployment(config_file)
     obj.start_deployment()
 
     print_color("~~~~~~~~~~~~~~~ Ready to Rock ~~~~~~~~~~~~~~", "pink")
