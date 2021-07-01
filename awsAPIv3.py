@@ -28,7 +28,10 @@ class aws(object):
 
         t_time = datetime.datetime.now()
         if record:
-            self.cliLog = "aws_cli_" + t_time.strftime("%H-%M-%S_%d-%m-%Y")
+            if record != True:
+                self.cliLog = record
+            else:
+                self.cliLog = "aws_cli_" + t_time.strftime("%H-%M-%S_%d-%m-%Y")
 
         atexit.register(self.close)
 
@@ -577,8 +580,10 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 1:
         config_file = sys.argv[1]
+        record = config_file.replace(".config", ".log")
     else:
         config_file = "aws_tb_pytest_east_1_hybrid.config"
+        record = True
 
     setting = {}
     # cfg = {"default": {"region": "shanghai", "output": "json"}}
@@ -592,7 +597,7 @@ if __name__ == "__main__":
     setting["config"] = cfg
     setting["credentials"] = cda
 
-    obj = aws(setting, debug=True)
+    obj = aws(setting, record=record, debug=True)
     atexit.register(obj.close)
 
     import signal
