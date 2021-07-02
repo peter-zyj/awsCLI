@@ -476,7 +476,7 @@ class aws(object):
                 if "~ TERMINATION ~" not in cmd:
                     cmd = cmd.strip()
                     num = 0
-                    while num <= 20:
+                    while num <= 40:
                         resp = self.raw_cli_res(cmd)
                         if "does not exist" in resp:
                             break
