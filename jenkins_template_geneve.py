@@ -604,7 +604,7 @@ def local_run(show=False):
         aws_obj = aws(record=False)
 
     app_jb = aws_obj.blind("template-Hybrid-EC2-App-JB", "EC2INSTANCE", show=show)
-    asa_jb = aws_obj.blind("template-Hybrid-EC2-ASA-JB", "EC2INSTANCE", show=show)
+    asa_jb = aws_obj.blind("template-Hybrid-EC2-HBD-JB", "EC2INSTANCE", show=show)
     asa = aws_obj.blind("template-Hybrid-EC2-ASA", "EC2INSTANCE", show=show)
     app = aws_obj.blind("template-Hybrid-EC2-App", "EC2INSTANCE", show=show)
     ftd = aws_obj.blind("template-Hybrid-EC2-FTD", "EC2INSTANCE", show=show)
@@ -638,25 +638,7 @@ def acl_config(local_run):
 
 @pytest.mark.geneveASA
 @pytest.mark.udpYijun
-# def test_UDP666(acl_config):
 def test_UDP666(local_run, acl_config):
-    # if "aws_obj" in globals():
-    #     app_jb = aws_obj.blind("template-Hybrid-EC2-App-JB", "EC2INSTANCE")
-    #     asa_jb = aws_obj.blind("template-Hybrid-EC2-ASA-JB", "EC2INSTANCE")
-    #     asa = aws_obj.blind("template-Hybrid-EC2-ASA", "EC2INSTANCE")
-    #     app = aws_obj.blind("template-Hybrid-EC2-App", "EC2INSTANCE")
-    #
-    # else:
-    #     aws_obj = aws(record=False)
-    #     app_jb = aws_obj.blind("template-Hybrid-EC2-App-JB", "EC2INSTANCE")
-    #     asa_jb = aws_obj.blind("template-Hybrid-EC2-ASA-JB", "EC2INSTANCE")
-    #     asa = aws_obj.blind("template-Hybrid-EC2-ASA", "EC2INSTANCE")
-    #     app = aws_obj.blind("template-Hybrid-EC2-App", "EC2INSTANCE")
-    #
-    # app_jb_ip = app_jb["public_ip"]
-    # asa_jb_ip = asa_jb["public_ip"]
-    # asa_ip = asa["public_ip"]
-    # app_ip = app["public_ip"]
 
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, _, _ = local_run
 
