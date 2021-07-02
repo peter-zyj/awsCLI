@@ -22,3 +22,4 @@
 !influxdb_yijun.py
 !aws_tb_template_hybrid.config
 !pytest_day0.txt
+!jenkins_template_geneve.py
