@@ -7,7 +7,7 @@ import influxdb_yijun
 # tp_name = sys.argv[1]
 # cmd: pytest -v -s -m basic1to2 --skip_updown --html=report.html --self-contained-html --metadata Version 7.1
 
-cont  = open("report.html","r").read()
+cont = open("report.html", "r").read()
 soup = BeautifulSoup(cont, 'html.parser')
 
 result_list = soup.find_all("td", {"class": "col-result"})
