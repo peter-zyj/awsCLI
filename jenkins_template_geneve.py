@@ -19,6 +19,7 @@ def load_asa_config(asa_address, asa_jb_ip="20.0.250.10", debug=False):
     conn, result, cont = Geneve_reply(conn)
 
     conn.sendline(f"copy http://{asa_jb_ip}/geneve.smp disk0:/.")
+    # conn.sendline(f"copy http://{asa_jb_ip}/geneve.smp disk0:/") #the crap syntax is changing all the time
     conn, result, cont = Geneve_reply(conn, timeout=120, debug=debug)
 
     conn.sendline("conf term")

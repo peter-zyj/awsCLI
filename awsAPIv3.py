@@ -481,7 +481,7 @@ class aws(object):
                         if "does not exist" in resp:
                             break
                         elif "error occurred" in resp and "no route with destination-cidr-block 0.0.0.0/0" not in resp:
-                            time.sleep(5)
+                            time.sleep(10)
                             num += 1
                             print(num)
                         else:
