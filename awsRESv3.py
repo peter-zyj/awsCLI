@@ -575,12 +575,19 @@ class VPCE_SERVICE(resource):
                     str_gwlbID = f"--gateway-load-balancer-arns {gwlb_id}"
                     self.creation = re.sub(r"--gateway-load-balancer-arns .*?(?=( --|$))", str_gwlbID, self.creation)
 
-        while True:
+        num = 0
+        while num <= 20:
             res = cli_handler.raw_cli_res(self.creation)
             if "must be in the active state" in res:
                 time.sleep(5)
+                num += 1
+                print(num)
             else:
                 break
+
+        if num > 20:
+            cli_handler.close(exec=True)
+            sys.exit(1)
 
         self.ID = re.compile(r'ServiceId: (.*)').findall(res)[0].strip()
         self.svcName = re.compile(r'ServiceName: (.*)').findall(res)[0].strip()
@@ -654,12 +661,20 @@ class GATEWAY_LOAD_BALANCE_ENDPOINT(resource):
             if str_subID != "--subnet-ids":
                 self.creation = re.sub(r"--subnet-ids .*?(?=( --|$))", str_subID, self.creation)
 
-        while True:
+        num = 0
+        while num <= 20:
             res = cli_handler.raw_cli_res(self.creation)
             if "InvalidParameter" in res:
                 time.sleep(5)
+                num += 1
+                print(num)
             else:
                 break
+
+        if num > 20:
+            cli_handler.close(exec=True)
+            sys.exit(1)
+
         self.ID = re.compile(r'VpcEndpointId: (.*)').findall(res)[0].strip()
 
         if self.name:
@@ -737,12 +752,19 @@ class ROUTE(resource):
                     str_gwlbeID = f"--vpc-endpoint-id {gwlbe_id}"
                     self.creation = re.sub(r"--vpc-endpoint-id .*?(?=( --|$))", str_gwlbeID, self.creation)
 
-        while True:
+        num = 0
+        while num <= 20:
             res = cli_handler.raw_cli_res(self.creation)
             if "VPC Endpoints of this type cannot be used as route targets" in res:
                 time.sleep(5)
+                num += 1
+                print(num)
             else:
                 break
+
+        if num > 20:
+            cli_handler.close(exec=True)
+            sys.exit(1)
 
     def exec_termination(self, cli_handler, exec=True):
         if self.rtb_id:
@@ -989,12 +1011,19 @@ class REGISTER(resource):
                     nw_ip = res_obj.get_ip()
                     self.creation = self.creation.replace(res, nw_ip)
 
-        while True:
+        num = 0
+        while num <= 20:
             resp = cli_handler.raw_cli_res(self.creation)
             if "InvalidTarget" in resp:
                 time.sleep(5)
+                num += 1
+                print(num)
             else:
                 break
+
+        if num > 20:
+            cli_handler.close(exec=True)
+            sys.exit(1)
 
         self.ID = None
         self.termination = self.creation.replace("register-targets", "deregister-targets")
@@ -1069,12 +1098,20 @@ class AMICOPY(resource):
     def exec_creation(self, cli_handler):
         if self.creation_dependency:
             print_color(f"[Warning][AMICOPY][Unexpected]:{self.creation_dependency}", "yellow")
-        while True:
+
+        num = 0
+        while num <= 20:
             resp = cli_handler.raw_cli_res(self.creation)
             if "An error occurred" in resp:
                 time.sleep(5)
+                num += 1
+                print(num)
             else:
                 break
+
+        if num > 20:
+            cli_handler.close(exec=True)
+            sys.exit(1)
 
         self.ID = re.compile(r"ImageId: (ami-\w+)").findall(resp)[0].strip()
         if self.name:
@@ -1443,12 +1480,20 @@ class NETWORK_INTERFACE(resource):
             if str_sgID != "--groups":
                 self.creation = re.sub(r"--groups .*?(?=( --|$))", str_sgID, self.creation)
 
-        while True:
+        num = 0
+        while num <= 20:
             resp = cli_handler.raw_cli_res(self.creation)
             if "An error occurred" in resp:
                 time.sleep(5)
+                num += 1
+                print(num)
             else:
                 break
+
+        if num > 20:
+            cli_handler.close(exec=True)
+            sys.exit(1)
+
         self.ID = re.compile(r'NetworkInterfaceId: (.*)').findall(resp)[0].strip()
         self.IP = re.compile(r'PrivateIpAddress: (.*)').findall(resp)[0].strip()
 
@@ -1528,12 +1573,20 @@ class BIND(resource):
                         str_istID = f"--instance-id {ist_id[name]}"
                         self.creation = re.sub(r"--instance-id .*?(?=( --|$))", str_istID, self.creation)
 
-        while True:
+        num = 0
+        while num <= 20:
             resp = cli_handler.raw_cli_res(self.creation)
             if "An error occurred" in resp:
                 time.sleep(5)
+                num += 1
+                print(num)
             else:
                 break
+
+        if num > 20:
+            cli_handler.close(exec=True)
+            sys.exit(1)
+
         self.ID = re.compile(r'AttachmentId: (.*)').findall(resp)[0].strip()
 
     def exec_termination(self, cli_handler, exec=True):
@@ -1600,12 +1653,19 @@ class ELASTIC_IP(resource):
         self.attach = self.attach.replace("self.EIP", self.EIP)
         self.detach = self.detach.replace("self.EIP", self.EIP)
 
-        while True:
+        num = 0
+        while num <= 20:
             resp = cli_handler.raw_cli_res(self.attach)
             if "An error occurred" in resp:
                 time.sleep(5)
+                num += 1
+                print(num)
             else:
                 break
+
+        if num > 20:
+            cli_handler.close(exec=True)
+            sys.exit(1)
 
     def exec_termination(self, cli_handler, exec=True):
         if self.ID:
@@ -1690,13 +1750,19 @@ class TERMINATION(resource):
 
             self.creation = tmp_cmd
 
-
-        while True:
+        num = 0
+        while num <= 20:
             resp = cli_handler.raw_cli_res(self.creation)
             if "An error occurred" in resp:
                 time.sleep(5)
+                num += 1
+                print(num)
             else:
                 break
+
+        if num > 20:
+            cli_handler.close(exec=True)
+            sys.exit(1)
 
 if __name__ == "__main__":
     import paramiko
