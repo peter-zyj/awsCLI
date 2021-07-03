@@ -1390,7 +1390,7 @@ class EC2INSTANCE(resource):
         elif type(self.cmd).__name__ == "list":
             for cmd in self.cmd:
                 stdin, stdout, stderr = ssh.exec_command(cmd)
-                print_color(f"[Info][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd}", "yellow")
+                print_color(f"[Info][EC2INSTANCE][_cmd_handler][{name}]:{cmd}", "yellow")
                 stdout.channel.recv_exit_status()  # Yijun
                 out_lines = stdout.readlines()
                 stderr.channel.recv_exit_status()  # Yijun
