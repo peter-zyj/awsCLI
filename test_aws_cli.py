@@ -2110,7 +2110,7 @@ def test_manual_termination():
     obj = aws(setting, record=False)
     atexit.register(obj.close)
 
-    name = "aws_cli_19-28-49_16-06-2021"
+    name = "aws_tb_pytest_east_1_hybrid.log"
     obj.manual_termination(name)
 
     obj.close()
