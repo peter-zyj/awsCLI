@@ -1376,30 +1376,50 @@ class EC2INSTANCE(resource):
                 time.sleep(5)
 
         if type(self.cmd).__name__ == "str":
-            stdin, stdout, stderr = ssh.exec_command(self.cmd)
-            print_color(f"[Info][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd}", "yellow")
-            stdout.channel.recv_exit_status()  # Yijun
-            out_lines = stdout.readlines()
-            stderr.channel.recv_exit_status()  # Yijun
-            out_errors = stderr.readlines()
-            if out_errors:
-                print_color(f"[Error][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd} => {out_errors}", "red")
-            if out_lines:
-                print_color(f"cmd_output\n:{out_lines}", "green")
-            del stdin, stdout, stderr
-        elif type(self.cmd).__name__ == "list":
-            for cmd in self.cmd:
-                stdin, stdout, stderr = ssh.exec_command(cmd)
-                print_color(f"[Info][EC2INSTANCE][_cmd_handler][{name}]:{cmd}", "yellow")
+            num = 0
+            while num <= 20:
+                stdin, stdout, stderr = ssh.exec_command(self.cmd)
+                print_color(f"[Info][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd}", "yellow")
                 stdout.channel.recv_exit_status()  # Yijun
                 out_lines = stdout.readlines()
                 stderr.channel.recv_exit_status()  # Yijun
                 out_errors = stderr.readlines()
-
                 if out_errors:
-                    print_color(f"[Error][EC2INSTANCE][_cmd_handler][{name}]:{cmd} => {out_errors}", "red")
+                    print_color(f"[Error][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd} => {out_errors}", "red")
+                    if type(out_errors) == type([]):
+                        tmp_cont = "".join(out_errors)
+                        if "apt does not have a stable CLI interface" in tmp_cont:
+                            time.sleep(5)
+                            num += 1
+                            continue
                 if out_lines:
                     print_color(f"cmd_output\n:{out_lines}", "green")
+
+                break
+            del stdin, stdout, stderr
+        elif type(self.cmd).__name__ == "list":
+            for cmd in self.cmd:
+                num = 0
+                while num <= 20:
+                    stdin, stdout, stderr = ssh.exec_command(cmd)
+                    print_color(f"[Info][EC2INSTANCE][_cmd_handler][{name}]:{cmd}", "yellow")
+                    stdout.channel.recv_exit_status()  # Yijun
+                    out_lines = stdout.readlines()
+                    stderr.channel.recv_exit_status()  # Yijun
+                    out_errors = stderr.readlines()
+
+                    if out_errors:
+                        print_color(f"[Error][EC2INSTANCE][_cmd_handler][{name}]:{cmd} => {out_errors}", "red")
+                        if type(out_errors) == type([]):
+                            tmp_cont = "".join(out_errors)
+                            if "apt does not have a stable CLI interface" in tmp_cont:
+                                time.sleep(5)
+                                num += 1
+                                continue
+                    if out_lines:
+                        print_color(f"cmd_output\n:{out_lines}", "green")
+
+                    break
                 del stdin, stdout, stderr
         elif type(self.cmd).__name__ == "dict":
             print_color(f"[ERROR][EC2INSTANCE][_cmd_handler]: Unsupport command type:{self.cmd}", "red")
