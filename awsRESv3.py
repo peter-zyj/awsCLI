@@ -2,7 +2,7 @@ import os, sys
 import re, time, datetime
 import shutil, atexit
 import subprocess
-import yaml,collections
+import yaml, collections
 
 from lib_yijun import print_color
 
@@ -58,7 +58,7 @@ class resource(object):
         for key, value in query_dict.items():
             if value:
                 result = handler.blind(key, typeName=value)
-                query_dict[key] = {value:result}
+                query_dict[key] = {value: result}
             else:
                 id = handler.blind(key)
                 query_dict[key] = id
@@ -961,7 +961,7 @@ class REGISTER(resource):
                 for item in tmp:
                     if self.raw_yaml["target-group-arn"] == item:
                         self.query_dict[item] = "TARGET_GROUP"
-                    elif self.raw_yaml["targets"] == "Id="+item:
+                    elif self.raw_yaml["targets"] == "Id=" + item:
                         self.query_dict[item] = "NETWORK_INTERFACE"
                     else:
                         self.query_dict[item] = None
@@ -1056,7 +1056,6 @@ class REGISTER(resource):
         elif action == "termination":
             termination = creation.replace("register-targets", "deregister-targets")
             return termination
-
 
 
 class AMICOPY(resource):
@@ -1388,7 +1387,7 @@ class EC2INSTANCE(resource):
                     print_color(f"[Error][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd} => {out_errors}", "red")
                     if type(out_errors) == type([]):
                         tmp_cont = "".join(out_errors)
-                        if "apt does not have a stable CLI interface" in tmp_cont:
+                        if "you have held broken packages" in tmp_cont:
                             time.sleep(10)
                             print(num)
                             num += 1
@@ -1413,7 +1412,7 @@ class EC2INSTANCE(resource):
                         print_color(f"[Error][EC2INSTANCE][_cmd_handler][{name}]:{cmd} => {out_errors}", "red")
                         if type(out_errors) == type([]):
                             tmp_cont = "".join(out_errors)
-                            if "apt does not have a stable CLI interface" in tmp_cont:
+                            if "you have held broken packages" in tmp_cont:
                                 time.sleep(10)
                                 print(num)
                                 num += 1
@@ -1785,6 +1784,7 @@ class TERMINATION(resource):
         if num > 20:
             cli_handler.close(exec=True)
             sys.exit(1)
+
 
 if __name__ == "__main__":
     import paramiko
