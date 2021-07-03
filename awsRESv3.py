@@ -1377,7 +1377,7 @@ class EC2INSTANCE(resource):
 
         if type(self.cmd).__name__ == "str":
             num = 0
-            while num <= 20:
+            while num <= 40:
                 stdin, stdout, stderr = ssh.exec_command(self.cmd)
                 print_color(f"[Info][EC2INSTANCE][_cmd_handler][{name}]:{self.cmd}", "yellow")
                 stdout.channel.recv_exit_status()  # Yijun
@@ -1389,7 +1389,8 @@ class EC2INSTANCE(resource):
                     if type(out_errors) == type([]):
                         tmp_cont = "".join(out_errors)
                         if "apt does not have a stable CLI interface" in tmp_cont:
-                            time.sleep(5)
+                            time.sleep(10)
+                            print(num)
                             num += 1
                             continue
                 if out_lines:
@@ -1400,7 +1401,7 @@ class EC2INSTANCE(resource):
         elif type(self.cmd).__name__ == "list":
             for cmd in self.cmd:
                 num = 0
-                while num <= 20:
+                while num <= 40:
                     stdin, stdout, stderr = ssh.exec_command(cmd)
                     print_color(f"[Info][EC2INSTANCE][_cmd_handler][{name}]:{cmd}", "yellow")
                     stdout.channel.recv_exit_status()  # Yijun
@@ -1413,7 +1414,8 @@ class EC2INSTANCE(resource):
                         if type(out_errors) == type([]):
                             tmp_cont = "".join(out_errors)
                             if "apt does not have a stable CLI interface" in tmp_cont:
-                                time.sleep(5)
+                                time.sleep(10)
+                                print(num)
                                 num += 1
                                 continue
                     if out_lines:
