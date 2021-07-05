@@ -1,0 +1,128 @@
+interface TenGigabitEthernet0/0
+nameif data-interface
+security-level 0
+ip address 20.0.1.101 255.255.255.0
+no shutdown
+
+logging enable
+logging buffer-size 52428800
+logging buffered debugging
+logging trap debugging
+logging host data 20.0.1.10
+
+dns domain-lookup management
+dns name-server 8.8.8.8
+
+license smart register idtoken NDYzNGI4OTktYmRkNy00ZDg1LTlhNjYtNGVmZGZmYzEwZjczLTE2NDU1MTE2%0ANTEyNTZ8SHpxc1dXZTdhWEhmcXNEOTM0ZTNlK3JnWC9yWXJ6UTdUUkpxQnRY%0AaG9iMD0%3D%0A force
+
+nve 1
+encapsulation geneve
+source-interface data-interface
+
+interface vni1
+aws-proxy
+nameif ge
+security-level 0
+vtep-nve 1
+
+
+same-security-traffic permit intra-interface
+
+access-list aaa extended permit tcp any host 20.0.1.101 eq www
+access-list geneve extended permit ip 10.0.1.0 255.255.255.0 any
+access-list 100 extended permit ip any any
+
+logging enable
+logging buffer-size 52428800
+logging buffered debugging
+
+mtu data-interface 1806
+
+no monitor-interface service-module
+
+access-group geneve in interface ge
+
+aaa authentication match aaa data-interface LOCAL
+aaa authentication listener http data-interface port www
+
+crypto ca trustpoint _SmartCallHome_ServerCA2
+no validation-usage
+crl configure
+
+crypto ca certificate chain _SmartCallHome_ServerCA2
+certificate ca 0509
+    308205b7 3082039f a0030201 02020205 09300d06 092a8648 86f70d01 01050500
+    3045310b 30090603 55040613 02424d31 19301706 0355040a 13105175 6f566164
+    6973204c 696d6974 6564311b 30190603 55040313 1251756f 56616469 7320526f
+    6f742043 41203230 1e170d30 36313132 34313832 3730305a 170d3331 31313234
+    31383233 33335a30 45310b30 09060355 04061302 424d3119 30170603 55040a13
+    1051756f 56616469 73204c69 6d697465 64311b30 19060355 04031312 51756f56
+    61646973 20526f6f 74204341 20323082 0222300d 06092a86 4886f70d 01010105
+    00038202 0f003082 020a0282 0201009a 18ca4b94 0d002daf 03298af0 0f81c8ae
+    4c19851d 089fab29 4485f32f 81ad321e 9046bfa3 86261a1e fe7e1c18 3a5c9c60
+    172a3a74 8333307d 615411cb edabe0e6 d2a27ef5 6b6f18b7 0a0b2dfd e93eef0a
+    c6b310e9 dcc24617 f85dfda4 daff9e49 5a9ce633 e62496f7 3fba5b2b 1c7a35c2
+    d667feab 66508b6d 28602bef d760c3c7 93bc8d36 91f37ff8 db1113c4 9c7776c1
+    aeb7026a 817aa945 83e205e6 b956c194 378f4871 6322ec17 6507958a 4bdf8fc6
+    5a0ae5b0 e35f5e6b 11ab0cf9 85eb44e9 f80473f2 e9fe5c98 8cf573af 6bb47ecd
+    d45c022b 4c39e1b2 95952d42 87d7d5b3 9043b76c 13f1dedd f6c4f889 3fd175f5
+    92c391d5 8a88d090 ecdc6dde 89c26571 968b0d03 fd9cbf5b 16ac92db eafe797c
+    adebaff7 16cbdbcd 252be51f fb9a9fe2 51cc3a53 0c48e60e bdc9b476 0652e611
+    13857263 0304e004 362b2019 02e874a7 1fb6c956 66f07525 dc67c10e 616088b3
+    3ed1a8fc a3da1db0 d1b12354 df44766d ed41d8c1 b222b653 1cdf351d dca1772a
+    31e42df5 e5e5dbc8 e0ffe580 d70b63a0 ff33a10f ba2c1515 ea97b3d2 a2b5bef2
+    8c961e1a 8f1d6ca4 6137b986 7333d797 969e237d 82a44c81 e2a1d1ba 675f9507
+    a32711ee 16107bbc 454a4cb2 04d2abef d5fd0c51 ce506a08 31f991da 0c8f645c
+    03c33a8b 203f6e8d 673d3ad6 fe7d5b88 c95efbcc 61dc8b33 77d34432 35096204
+    921610d8 9e2747fb 3b21e3f8 eb1d5b02 03010001 a381b030 81ad300f 0603551d
+    130101ff 04053003 0101ff30 0b060355 1d0f0404 03020106 301d0603 551d0e04
+    1604141a 8462bc48 4c332504 d4eed0f6 03c41946 d1946b30 6e060355 1d230467
+    30658014 1a8462bc 484c3325 04d4eed0 f603c419 46d1946b a149a447 3045310b
+    30090603 55040613 02424d31 19301706 0355040a 13105175 6f566164 6973204c
+    696d6974 6564311b 30190603 55040313 1251756f 56616469 7320526f 6f742043
+    41203282 02050930 0d06092a 864886f7 0d010105 05000382 0201003e 0a164d9f
+    065ba8ae 715d2f05 2f67e613 4583c436 f6f3c026 0c0db547 645df8b4 72c946a5
+    03182755 89787d76 ea963480 1720dce7 83f88dfc 07b8da5f 4d2e67b2 84fdd944
+    fc775081 e67cb4c9 0d0b7253 f8760707 4147960c fbe08226 93558cfe 221f6065
+    7c5fe726 b3f73290 9850d437 7155f692 2178f795 79faf82d 26876656 3077a637
+    78335210 58ae3f61 8ef26ab1 ef187e4a 5963ca8d a256d5a7 2fbc561f cf39c1e2
+    fb0aa815 2c7d4d7a 63c66c97 443cd26f c34a170a f890d257 a21951a5 2d9741da
+    074fa950 da908d94 46e13ef0 94fd1000 38f53be8 40e1b46e 561a20cc 6f588ded
+    2e458fd6 e9933fe7 b12cdf3a d6228cdc 84bb226f d0f8e4c6 39e90488 3cc3baeb
+    557a6d80 9924f56c 01fbf897 b0945beb fdd26ff1 77680d35 6423acb8 55a103d1
+    4d4219dc f8755956 a3f9a849 79f8af0e b911a07c b76aed34 d0b62662 381a870c
+    f8e8fd2e d3907f07 912a1dd6 7e5c8583 99b03808 3fe95ef9 3507e4c9 626e577f
+    a75095f7 bac89be6 8ea201c5 d666bf79 61f33c1c e1b9825c 5da0c3e9 d848bd19
+    a2111419 6eb2861b 683e4837 1a88b75d 965e9cc7 ef276208 e291195c d2f121dd
+    ba174282 97718153 31a99ff6 7d62bf72 e1a3931d cc8a265a 0938d0ce d70d8016
+    b478a53a 874c8d8a a5d54697 f22c10b9 bc5422c0 01506943 9ef4b2ef 6df8ecda
+    f1e3b1ef df918f54 2a0b25c1 2619c452 100565d5 8210eac2 31cd2e
+quit
+
+policy-map type inspect dns preset_dns_map
+parameters
+message-length maximum client auto
+message-length maximum 512
+no tcp-inspection
+
+policy-map global_policy
+class inspection_default
+inspect icmp
+
+no call-home reporting anonymous
+
+license smart
+feature tier standard
+throughput level 2G
+
+object network gwlb-net
+subnet 20.0.1.0 255.255.255.0
+
+object-group network gwlb
+network-object object gwlb-net
+
+object-group network metadata
+network-object host 20.0.1.10
+
+object service http80
+service tcp destination eq www
