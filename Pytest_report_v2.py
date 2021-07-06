@@ -21,6 +21,13 @@ except:
     test_version = "Unknown"
 
 try:
+    date_patten = "(?s)Report generated on (.*?) at (.*?) by"
+    date1, time1 = re.compile(date_patten).findall(cont)[0]
+    report_date = date1 + "#" + time1
+except:
+    report_date = "Unknown"
+
+try:
     time_raw = soup.find_all(string=re.compile("Report generated on"))[0].strip()
     test_Tstamp = time_raw.split()[3] + "_" + time_raw.split()[5].replace(":", "_")
 except:
@@ -50,7 +57,8 @@ for key,val in simple_result.items():
     #TBD test_version (from report)  plugin:pytest-metadata
     test_duration = val["Duration"]
     test_result = val["Result"]
-    record = f"{test_table}_{test_Tstamp},name={test_name},result={test_result},version={test_version} duration={test_duration}"
+    record = f"{test_table}_{test_Tstamp},name={test_name},result={test_result}," \
+             f"version={test_version},date={report_date} duration={test_duration}"
 
     record_list.append(record)
 
