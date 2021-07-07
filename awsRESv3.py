@@ -1252,6 +1252,7 @@ class EC2INSTANCE(resource):
             reName = reName.replace("self.temp_name", name)
             cli_handler.raw_cli_res(reName)
 
+            time.sleep(60) #wait for linux cli ready
             if self.cmd:
                 self._add_global_access(cli_handler, sg_id)
                 self._cmd_handler(cli_handler, name)

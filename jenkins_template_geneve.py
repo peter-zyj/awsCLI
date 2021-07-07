@@ -297,7 +297,7 @@ def test_config_ASA(local_run):
 
     asa_address = f"ssh -i 'template-Key' admin@{asa_ip}"
 
-    load_asa_config(asa_address, debug)
+    load_asa_config(asa_address, debug=False)
 
 
 @pytest.mark.config_FTDv
