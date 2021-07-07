@@ -422,6 +422,11 @@ def test_apt_install_from_inside(local_run):
         _, stdout, _ = ssh.exec_command("ssh -i 'template-Key' -o StrictHostKeyChecking=no "
                                         "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'sudo apt update'")
         stdout.channel.recv_exit_status()
+
+        _, stdout, _ = ssh.exec_command("ssh -i 'template-Key' -o StrictHostKeyChecking=no "
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'sudo apt iperf -y'")
+        stdout.channel.recv_exit_status()
+
         _, stdout, _ = ssh.exec_command("ssh -i 'template-Key' -o StrictHostKeyChecking=no "
                                         "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'sudo apt install apache2 -y'")
         stdout.channel.recv_exit_status()
@@ -1472,6 +1477,14 @@ def test_apt_install_from_inside_FTD(local_run):
     ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="template-Key")
 
     while True:
+        _, stdout, _ = ssh.exec_command("ssh -i 'template-Key' -o StrictHostKeyChecking=no "
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'sudo apt update'")
+        stdout.channel.recv_exit_status()
+
+        _, stdout, _ = ssh.exec_command("ssh -i 'template-Key' -o StrictHostKeyChecking=no "
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'sudo apt iperf -y'")
+        stdout.channel.recv_exit_status()
+
         _, stdout, _ = ssh.exec_command("ssh -i 'template-Key' -o StrictHostKeyChecking=no "
                                         "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'sudo apt install apache2 -y'")
         stdout.channel.recv_exit_status()
