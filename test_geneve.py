@@ -324,7 +324,7 @@ def test_Basic_PingGoogle(local_run):
         else:
             break
 
-    assert "0% packet loss" in resp1
+    assert " 0% packet loss" in resp1
     ssh.close()
 
 @pytest.mark.geneveASA
@@ -352,7 +352,7 @@ def test_Basic_PingApp(local_run):
         else:
             break
 
-    assert "0% packet loss" in resp1
+    assert " 0% packet loss" in resp1
 
     no_access_list = f"no access-list geneve extended permit icmp host {app_jb_ip} host 10.0.1.101"
     asa_config(asa_address, no_access_list)
