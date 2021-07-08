@@ -424,7 +424,7 @@ def test_apt_install_from_inside(local_run):
         stdout.channel.recv_exit_status()
 
         _, stdout, _ = ssh.exec_command("ssh -i 'template-Key' -o StrictHostKeyChecking=no "
-                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'sudo apt iperf -y'")
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'sudo apt install iperf -y'")
         stdout.channel.recv_exit_status()
 
         _, stdout, _ = ssh.exec_command("ssh -i 'template-Key' -o StrictHostKeyChecking=no "
@@ -1482,7 +1482,7 @@ def test_apt_install_from_inside_FTD(local_run):
         stdout.channel.recv_exit_status()
 
         _, stdout, _ = ssh.exec_command("ssh -i 'template-Key' -o StrictHostKeyChecking=no "
-                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'sudo apt iperf -y'")
+                                        "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'sudo apt install iperf -y'")
         stdout.channel.recv_exit_status()
 
         _, stdout, _ = ssh.exec_command("ssh -i 'template-Key' -o StrictHostKeyChecking=no "
