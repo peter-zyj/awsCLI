@@ -1047,6 +1047,9 @@ def test_log_server(local_run):
     ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
     ssh2.connect(asa_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
 
+    _, stdout, _ = ssh2.exec_command("sudo ifconfig eth1 down;sudo ifconfig eth1 20.0.1.10/24;sudo ifconfig eth1 up")
+    stdout.channel.recv_exit_status()
+
     while True:
         _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
                                         "-o UserKnownHostsFile=/dev/null ubuntu@10.0.1.101 'ping 8.8.8.8 -c 10'")
@@ -2702,6 +2705,9 @@ logging message 302020
 
     ssh.connect(app_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
     ssh2.connect(asa_jb_ip, username='ubuntu', password='', key_filename="testDog.pem")
+
+    _, stdout, _ = ssh2.exec_command("sudo ifconfig eth1 down;sudo ifconfig eth1 20.0.1.10/24;sudo ifconfig eth1 up")
+    stdout.channel.recv_exit_status()
 
     while True:
         _, stdout, _ = ssh.exec_command("ssh -i 'testDog.pem' -o StrictHostKeyChecking=no "
