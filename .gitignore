@@ -1,6 +1,7 @@
 *
 !awsRES.py
 !awsRESv3.py
+!awsRESv4.py
 !awsAPIv2.py
 !awsAPIv3.py
 !aws_cli_v2.config
