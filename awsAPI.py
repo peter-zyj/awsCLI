@@ -630,4 +630,19 @@ aws ec2 describe-instances --filters Name=tag-value,Values=Test-1-169-EC2-App-JB
 aws ec2 copy-image --source-image-id ami-06aac12eabffe610d --source-region us-east-2 --region us-west-1 --name "fmcv"
 aws ec2 deregister-image --image-id ami-4fa54026
 aws ec2 describe-images --image-id ami-08a48fa1c33b1178f
+
+
+//NLB:
+aws elbv2 create-load-balancer --name my-network-load-balancer --type network --subnet-mappings SubnetId=subnet-b7d581c0,AllocationId=eipalloc-64d5890a
+
+aws ec2 modify-vpc-peering-connection-options --vpc-peering-connection-id pcx-05e64e2c1e49f65c4 --requester-peering-connection-options AllowEgressFromLocalClassicLinkToRemoteVpc=true,AllowEgressFromLocalVpcToRemoteClassicLink=true --accepter-peering-connection-options AllowEgressFromLocalClassicLinkToRemoteVpc=true,AllowEgressFromLocalVpcToRemoteClassicLink=true
+| ~/.aws @ YIJUNZHU-M-G1FJ (yijunzhu) 
+| => aws ec2 modify-vpc-peering-connection-options --vpc-peering-connection-id pcx-05e64e2c1e49f65c4 --requester-peering-connection-options AllowEgressFromLocalClassicLinkToRemoteVpc=true,AllowEgressFromLocalVpcToRemoteClassicLink=true --accepter-peering-connection-options AllowEgressFromLocalClassicLinkToRemoteVpc=true,AllowEgressFromLocalVpcToRemoteClassicLink=true
+AccepterPeeringConnectionOptions:
+  AllowEgressFromLocalClassicLinkToRemoteVpc: true
+  AllowEgressFromLocalVpcToRemoteClassicLink: true
+RequesterPeeringConnectionOptions:
+  AllowDnsResolutionFromRemoteVpc: false
+  AllowEgressFromLocalClassicLinkToRemoteVpc: true
+  AllowEgressFromLocalVpcToRemoteClassicLink: true
 '''
