@@ -15,6 +15,7 @@ from lib_yijun import print_color
 # version 4: add new type NETWORK_LOAD_BALANCE
 #           update VPCE_SERVICE
 #           update ELASTIC_IP
+#           update NETWORK_INTERFACE (SourceDestCheck)
 class resource(object):
     def __init__(self):
         self.creation_dependency = None
@@ -1539,6 +1540,8 @@ class NETWORK_INTERFACE(resource):
                 if value and value != "None":
                     value = '"' + value + '"' if " " in value else value
                     self.creation += " --" + key + " " + str(value)
+                elif value == '*':
+                    continue
                 else:
                     self.creation += " --" + key
             else:
@@ -1610,6 +1613,13 @@ class NETWORK_INTERFACE(resource):
         if self.name:
             self.reName = self.reName.replace("self.ID", str(self.ID))
             cli_handler.raw_cli_res(self.reName)
+
+        if "no-source-dest-check" in self.raw_yaml:
+            bonus_cmd = f"aws ec2 modify-instance-attribute --instance-id {self.ID} --no-source-dest-check"
+            cli_handler.raw_cli_res(bonus_cmd)
+        elif "source-dest-check" in self.raw_yaml:
+            bonus_cmd = f"aws ec2 modify-instance-attribute --instance-id {self.ID} --source-dest-check"
+            cli_handler.raw_cli_res(bonus_cmd)
 
     def exec_termination(self, cli_handler, exec=True):
         if self.ID:

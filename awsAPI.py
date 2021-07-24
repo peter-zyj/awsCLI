@@ -645,4 +645,8 @@ RequesterPeeringConnectionOptions:
   AllowDnsResolutionFromRemoteVpc: false
   AllowEgressFromLocalClassicLinkToRemoteVpc: true
   AllowEgressFromLocalVpcToRemoteClassicLink: true
+  
+aws ec2 modify-instance-attribute --instance-id i-1234567890abcdef0 --source-dest-check
+aws ec2 modify-network-interface-attribute --network-interface-id eni-037d5fdedda9a702f --source-dest-check '{"Value":false}'
+aws ec2 modify-network-interface-attribute --network-interface-id eni-0726f37d723322a64 --no-source-dest-check
 '''
