@@ -16,6 +16,7 @@ from lib_yijun import print_color
 #           update VPCE_SERVICE
 #           update ELASTIC_IP
 #           update NETWORK_INTERFACE (SourceDestCheck)
+#           update LISTENER
 class resource(object):
     def __init__(self):
         self.creation_dependency = None
@@ -478,6 +479,9 @@ class NETWORK_LOAD_BALANCE(resource):
                         content = content.replace(name, sub_id)
                     elif type(res_obj).__name__ == "ELASTIC_IP":
                         eip_id = cli_handler.find_id(name)
+                        print_color(f"Debug:eip_id=={eip_id}", "red")
+                        print_color(f"Debug:name=={name}", "red")
+                        print_color(f"Debug:content=={content}", "red")
                         content = content.replace(name, eip_id)
 
                 self.creation = re.sub(r"--subnet-mappings .*?(?=( --|$))", content, self.creation)
@@ -604,6 +608,10 @@ class LISTENER(resource):
                     gwlb_id = cli_handler.find_id(res)
                     str_gwlbID = f"--load-balancer-arn {gwlb_id}"
                     self.creation = re.sub(r"--load-balancer-arn .*?(?=( --|$))", str_gwlbID, self.creation)
+                elif type(res_obj).__name__ == "NETWORK_LOAD_BALANCE":
+                    nlb_id = cli_handler.find_id(res)
+                    str_nlbID = f"--load-balancer-arn {nlb_id}"
+                    self.creation = re.sub(r"--load-balancer-arn .*?(?=( --|$))", str_nlbID, self.creation)
         res = cli_handler.raw_cli_res(self.creation)
         self.ID = re.compile(r'ListenerArn: (.*)').findall(res)[0].strip()
 
@@ -840,6 +848,10 @@ class ROUTE(resource):
                     gwlbe_id = cli_handler.find_id(res)
                     str_gwlbeID = f"--vpc-endpoint-id {gwlbe_id}"
                     self.creation = re.sub(r"--vpc-endpoint-id .*?(?=( --|$))", str_gwlbeID, self.creation)
+                elif type(res_obj).__name__ == "NETWORK_INTERFACE":
+                    ni_id = cli_handler.find_id(res)
+                    str_niID = f"--network-interface-id {ni_id}"
+                    self.creation = re.sub(r"--network-interface-id .*?(?=( --|$))", str_niID, self.creation)
 
         num = 0
         while num <= 20:
@@ -1538,10 +1550,10 @@ class NETWORK_INTERFACE(resource):
         for key, value in self.raw_yaml.items():
             if key != "action":
                 if value and value != "None":
+                    if value == '*':
+                        continue
                     value = '"' + value + '"' if " " in value else value
                     self.creation += " --" + key + " " + str(value)
-                elif value == '*':
-                    continue
                 else:
                     self.creation += " --" + key
             else:
@@ -1758,11 +1770,12 @@ class ELASTIC_IP(resource):
     def exec_creation(self, cli_handler):
 
         resp = cli_handler.raw_cli_res(self.creation)
-        if "instance-id" not in self.raw_yaml:
-            return
 
         self.ID = re.compile(r'AllocationId: (.*)').findall(resp)[0].strip()
         self.EIP = re.compile(r'PublicIp: (.*)').findall(resp)[0].strip()
+
+        if "instance-id" not in self.raw_yaml:
+            return
 
         if self.creation_dependency:
             for res in self.creation_dependency:

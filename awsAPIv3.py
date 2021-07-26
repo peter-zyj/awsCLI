@@ -4,7 +4,7 @@ import shutil, atexit
 import subprocess,collections
 import yaml
 
-from awsRESv3 import *
+from awsRESv4 import *
 from lib_yijun import print_color
 #version 2: add command cli recording
 #version 3: add blind function to fetch address/id of aws resource
@@ -582,7 +582,7 @@ if __name__ == "__main__":
         config_file = sys.argv[1]
         record = config_file.replace(".config", ".log")
     else:
-        config_file = "aws_tb_pytest_east_1_hybrid.config"
+        config_file = "aws_tb_Srina_east_1.config"
         record = True
 
     setting = {}
@@ -600,7 +600,7 @@ if __name__ == "__main__":
     except:
         pass
 
-    obj = aws(setting, record=record, debug=True)
+    obj = aws(setting, record=record, debug=False)
     atexit.register(obj.close)
 
     import signal
