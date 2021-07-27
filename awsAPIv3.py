@@ -582,7 +582,7 @@ if __name__ == "__main__":
         config_file = sys.argv[1]
         record = config_file.replace(".config", ".log")
     else:
-        config_file = "aws_tb_Srina_east_1.config"
+        config_file = "aws_tb_Srina_east_1_1zone.config"
         record = True
 
     setting = {}

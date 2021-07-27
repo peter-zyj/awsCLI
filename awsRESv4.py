@@ -479,9 +479,6 @@ class NETWORK_LOAD_BALANCE(resource):
                         content = content.replace(name, sub_id)
                     elif type(res_obj).__name__ == "ELASTIC_IP":
                         eip_id = cli_handler.find_id(name)
-                        print_color(f"Debug:eip_id=={eip_id}", "red")
-                        print_color(f"Debug:name=={name}", "red")
-                        print_color(f"Debug:content=={content}", "red")
                         content = content.replace(name, eip_id)
 
                 self.creation = re.sub(r"--subnet-mappings .*?(?=( --|$))", content, self.creation)
@@ -1627,10 +1624,10 @@ class NETWORK_INTERFACE(resource):
             cli_handler.raw_cli_res(self.reName)
 
         if "no-source-dest-check" in self.raw_yaml:
-            bonus_cmd = f"aws ec2 modify-instance-attribute --instance-id {self.ID} --no-source-dest-check"
+            bonus_cmd = f"aws ec2 modify-network-interface-attribute --network-interface-id {self.ID} --no-source-dest-check"
             cli_handler.raw_cli_res(bonus_cmd)
         elif "source-dest-check" in self.raw_yaml:
-            bonus_cmd = f"aws ec2 modify-instance-attribute --instance-id {self.ID} --source-dest-check"
+            bonus_cmd = f"aws ec2 modify-network-interface-attribute --network-interface-id {self.ID} --source-dest-check"
             cli_handler.raw_cli_res(bonus_cmd)
 
     def exec_termination(self, cli_handler, exec=True):
