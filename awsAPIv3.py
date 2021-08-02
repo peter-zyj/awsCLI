@@ -600,7 +600,7 @@ if __name__ == "__main__":
     except:
         pass
 
-    obj = aws(setting, record=record, debug=False)
+    obj = aws(setting, record=record, debug=True)
     atexit.register(obj.close)
 
     import signal
