@@ -2645,7 +2645,7 @@ def test_udp_counter_FTD(local_run):
     ftd_address = f"ssh -i 'testDog.pem' admin@{ftd_ip}"
     ftd_config(ftd_address, cmd1)
 
-    send(IP(dst="20.0.1.101") / UDP(sport=20001, dport=6081, chksum=0) / b'\x08\x00\x08')
+    send(IP(dst="20.0.1.102") / UDP(sport=20001, dport=6081, chksum=0) / b'\x08\x00\x08')
 
     _, res = ftd_config(ftd_address, cmd2)
     assert "geneve-invalid-udp-checksum" in res
