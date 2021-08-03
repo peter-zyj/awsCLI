@@ -2281,13 +2281,16 @@ PytestExtra_NWInterface_FTD_3_Bind(BIND):
     obj.load_deployment(content=cont)
     obj.start_deployment()
 
-# @pytest.mark.runman
-# def test_runman():
-#     aws.runman("aws_cli_runman")
-#
-# @pytest.mark.runmanterm
-# def test_runman_term():
-#     aws.runman("aws_runman_2021-05-17_07-14-18", "termination")
+@pytest.mark.runman
+def test_runman():
+    import awsRunman
+    awsRunman.runman("aws_cli_runman", "creation")
+
+@pytest.mark.runmanterm
+def test_runman_term():
+    # aws.runman("aws_runman_2021-05-17_07-14-18", "termination")
+    import awsRunman
+    awsRunman.runman("aws_runman_2021-08-03_09-27-06", "termination")
 
 @pytest.mark.yijun_xfail
 @pytest.mark.xfail(raises=ZeroDivisionError)

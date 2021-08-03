@@ -8,7 +8,8 @@ from awsRESv4 import *
 from lib_yijun import print_color
 #version 2: add command cli recording
 #version 3: add blind function to fetch address/id of aws resource
-#version 4(TBD): convert log file to exec file with dynamic file
+#version 3.1: update Manual_termination to suport runman
+
 class aws(object):
     def __init__(self, configuration=None, record=True, debug=False):
         self.config = False
@@ -469,11 +470,15 @@ class aws(object):
 
         with open(fileName,'r') as f:
             term_cont = f.read()
-            pattern = "(?s)~ TERMINATION ~.*"
+            if "~ RUNMAN TERM ~" in term_cont:
+                pattern = "(?s)~ RUNMAN TERM ~.*"
+            elif "~ TERMINATION ~" in term_cont:
+                pattern = "(?s)~ TERMINATION ~.*"
+
             cmd_list = re.compile(pattern).findall(term_cont)[0].split("\n")
 
             for cmd in cmd_list:
-                if "~ TERMINATION ~" not in cmd:
+                if "~ TERMINATION ~" not in cmd and "~ RUNMAN TERM ~" not in cmd:
                     cmd = cmd.strip()
                     num = 0
                     while num <= 40:
