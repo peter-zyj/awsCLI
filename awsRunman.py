@@ -78,7 +78,8 @@ def runman(fileName, action=None) -> str:
 
 
         t_time = datetime.datetime.now()
-        new_file = "aws_runman_" + t_time.strftime("%Y-%m-%d_%H-%M-%S")
+        new_file = fileName + ".removal"
+        # new_file = "aws_runman_" + t_time.strftime("%Y-%m-%d_%H-%M-%S")
 
         try:
             with open(new_file, "w+") as file:
@@ -102,6 +103,7 @@ def runman(fileName, action=None) -> str:
 
         res_dict = collections.defaultdict(lambda: None)
         orphaned = collections.defaultdict(set)
+        # orphaned = collections.defaultdict(list)
         id_list = []
         id_list.append(r"igw-\w{5,}")
         id_list.append(r"vpc-\w{5,}")
@@ -145,7 +147,6 @@ def runman(fileName, action=None) -> str:
                         id = res[0]
                         line = line.replace(id, res_dict[id])
                     elif res:
-                        # print("search/replace ID 2")
                         id = res[0]
                         try:
                             v = orphaned[p].pop()
@@ -159,7 +160,7 @@ def runman(fileName, action=None) -> str:
                 num = 0
                 while num < 50:
                     resp = tmp_obj.raw_cli_res(line)
-                    if "error occurred" in resp:
+                    if "error occurred" in resp and "already exists" not in resp:
                         num += 1
                         time.sleep(5)
                     else:
@@ -170,8 +171,11 @@ def runman(fileName, action=None) -> str:
                     return
 
                 #search/add ID
+                resp2 = re.sub("AWS-Auto#.*", "", resp)
                 for p in id_list:
-                    res_list = re.compile(p).findall(resp)
+                    res_list = re.compile(p).findall(resp2)
+                    # if res_list and res_list[0] not in orphaned[p]:
+                    #     orphaned[p].append(res_list[0])
                     if res_list:
                         orphaned[p].add(res_list[0])
 

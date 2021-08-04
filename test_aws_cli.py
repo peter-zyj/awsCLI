@@ -2290,7 +2290,7 @@ def test_runman():
 def test_runman_term():
     # aws.runman("aws_runman_2021-05-17_07-14-18", "termination")
     import awsRunman
-    awsRunman.runman("aws_runman_2021-08-03_09-27-06", "termination")
+    awsRunman.runman("aws_cli_runman.removal", "termination")
 
 @pytest.mark.yijun_xfail
 @pytest.mark.xfail(raises=ZeroDivisionError)
