@@ -9,6 +9,7 @@ from lib_yijun import print_color
 #version 2: add command cli recording
 #version 3: add blind function to fetch address/id of aws resource
 #version 3.1: update Manual_termination to suport runman
+#version 3.2: config syntax check
 
 class aws(object):
     def __init__(self, configuration=None, record=True, debug=False):
@@ -373,6 +374,16 @@ class aws(object):
         if not self.res_yaml:
             print_color(f"[ERROR][awsAPI._res_arrange]: Empty resource content", "red")
             return
+
+        good_result, complain = self._syntax_check()
+        if not good_result:
+            print_color("[Error][awsAPI.load_deplyment]:configure file syntax not correct", "red")
+            print_color(f"can't find dependency of {complain}", "red")
+            sys.exit(1)
+        else:
+            print_color("Syntax Check...Pass", "green")
+
+        sys.exit(0)
         for res, content in self.res_yaml.items():
             tagName, resName = re.compile(r'(.*?)\((.*?)\)').findall(res)[0]
             res_class = eval(resName)
@@ -492,6 +503,26 @@ class aws(object):
                         else:
                             break
 
+    def _syntax_check(self):
+        res_set = set()
+        dep_set = set()
+
+        for res, content in self.res_yaml.items():
+            tagName, resName = re.compile(r'(.*?)\((.*?)\)').findall(res)[0]
+            res_set.add(tagName)
+            try:
+                bt = content["action"]["bind_to"]
+            except:
+                continue
+            if type(bt).__name__ == "list":
+                for item in content["action"]["bind_to"]:
+                    dep_set.add(item)
+            elif type(bt).__name__ == "str":
+                dep_set.add(bt)
+
+        res = dep_set.issubset(res_set)
+        err = dep_set.difference(res_set)
+        return res, err
 
     def fetch_address(self, res_name):
         if res_name not in self.res_deployment:
@@ -587,7 +618,7 @@ if __name__ == "__main__":
         config_file = sys.argv[1]
         record = config_file.replace(".config", ".log")
     else:
-        config_file = "aws_tb_Srina_east_1_1zone.config"
+        config_file = "aws_tb_pytest_west_1_ASA_dist72.config"
         record = True
 
     setting = {}
