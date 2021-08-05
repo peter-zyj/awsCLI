@@ -383,7 +383,6 @@ class aws(object):
         else:
             print_color("Syntax Check...Pass", "green")
 
-        sys.exit(0)
         for res, content in self.res_yaml.items():
             tagName, resName = re.compile(r'(.*?)\((.*?)\)').findall(res)[0]
             res_class = eval(resName)
