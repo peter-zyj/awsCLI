@@ -5,6 +5,7 @@
 !awsAPIv2.py
 !awsAPIv3.py
 !aws_cli_v2.config
+!aws_cli_runman
 !test_aws_cli.py
 !awsRESv2.py
 !aws_tb.config

@@ -113,7 +113,7 @@ def runman(fileName, action=None) -> str:
         id_list.append(r"i-\w{5,}")
         id_list.append(r"eni-\w{5,}")
         id_list.append(r"arn:aws:elasticloadbalancing:\S+:loadbalancer\S+")
-        id_list.append(r"arn:aws:elasticloadbalancing:\S+;targetgroup\S+")
+        id_list.append(r"arn:aws:elasticloadbalancing:\S+:targetgroup\S+")
         id_list.append(r"vpce-\w{5,}")
 
         # TBD: eni-attach-0cccbaa188cc08d68 [**]

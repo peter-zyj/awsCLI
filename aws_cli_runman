@@ -1,0 +1,48 @@
+~~~~~~~~~~~~~~~~~~~ CREATION ~~~~~~~~~~~~~~~~~~~~
+aws ec2 create-internet-gateway
+aws ec2 create-tags --tag Key=Name,Value=runman_IG_App --resources igw-0d83c95cb4beae19b
+aws ec2 create-internet-gateway
+aws ec2 create-tags --tag Key=Name,Value=runman_IG_Sec --resources igw-0fb3fd1e6e68dc435
+aws ec2 create-vpc --cidr-block 10.0.1.0/16
+aws ec2 create-tags --tag Key=Name,Value=runman_VPC_App --resources vpc-0eeae13a7f4edbaa8
+aws ec2 attach-internet-gateway --vpc-id vpc-0eeae13a7f4edbaa8 --internet-gateway-id igw-0d83c95cb4beae19b
+aws ec2 create-vpc --cidr-block 20.0.1.0/16
+aws ec2 create-tags --tag Key=Name,Value=runman_VPC_Sec --resources vpc-0bf99adedf309c1b6
+aws ec2 attach-internet-gateway --vpc-id vpc-0bf99adedf309c1b6 --internet-gateway-id igw-0fb3fd1e6e68dc435
+aws ec2 create-security-group --group-name runman_SG_App_MGMT --vpc-id vpc-0eeae13a7f4edbaa8 --description "My security group"
+aws ec2 create-tags --tag Key=Name,Value=runman_SG_App_MGMT --resources sg-0c4c68486c76c3bff
+aws ec2 authorize-security-group-ingress --group-id sg-0c4c68486c76c3bff --protocol tcp --port 22 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id sg-0c4c68486c76c3bff --protocol tcp --port 80 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id sg-0c4c68486c76c3bff --protocol icmp --port all --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id sg-0c4c68486c76c3bff --protocol udp --port 6081 --cidr 0.0.0.0/0
+aws ec2 create-security-group --group-name runman_SG_App_DATA --vpc-id vpc-0eeae13a7f4edbaa8 --description "My security group"
+aws ec2 create-tags --tag Key=Name,Value=runman_SG_App_DATA --resources sg-0c4973275f6887aba
+aws ec2 authorize-security-group-ingress --group-id sg-0c4973275f6887aba --protocol all --port all --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-egress --group-id sg-0c4973275f6887aba --protocol all --port all --cidr 0.0.0.0/0
+aws ec2 create-security-group --group-name runman_SG_Sec_MGMT --vpc-id vpc-0bf99adedf309c1b6 --description "My security group"
+aws ec2 create-tags --tag Key=Name,Value=runman_SG_Sec_MGMT --resources sg-0a8e64c6ec4a04933
+aws ec2 authorize-security-group-ingress --group-id sg-0a8e64c6ec4a04933 --protocol tcp --port 22 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id sg-0a8e64c6ec4a04933 --protocol tcp --port 80 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id sg-0a8e64c6ec4a04933 --protocol icmp --port all --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id sg-0a8e64c6ec4a04933 --protocol udp --port 6081 --cidr 0.0.0.0/0
+aws ec2 create-security-group --group-name runman_SG_Sec_DATA --vpc-id vpc-0bf99adedf309c1b6 --description "My security group"
+aws ec2 create-tags --tag Key=Name,Value=runman_SG_Sec_DATA --resources sg-08a662bb3c420fc3f
+aws ec2 authorize-security-group-ingress --group-id sg-08a662bb3c420fc3f --protocol all --port all --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-egress --group-id sg-08a662bb3c420fc3f --protocol all --port all --cidr 0.0.0.0/0
+aws ec2 create-subnet --vpc-id vpc-0eeae13a7f4edbaa8 --cidr-block 10.0.250.0/24
+aws ec2 create-tags --tag Key=Name,Value=runman_SUB_App_1_MGMT --resources subnet-030cca589fa1c4cb7
+aws elbv2 create-target-group --name runman-TG --protocol GENEVE --port 6081 --vpc-id vpc-0bf99adedf309c1b6 --target-type ip
+~~~~~~~~~~~~~~~~~~~ TERMINATION ~~~~~~~~~~~~~~~~~~~~
+aws elbv2 delete-target-group --target-group-arn arn:aws:elasticloadbalancing:us-west-1:439462095416:targetgroup/runman-TG/00180dfb99a1a98023
+aws ec2 delete-subnet --subnet-id subnet-030cca589fa1c4cb7
+aws ec2 delete-security-group --group-id sg-08a662bb3c420fc3f
+aws ec2 delete-security-group --group-id sg-0a8e64c6ec4a04933
+aws ec2 delete-security-group --group-id sg-0c4973275f6887aba
+aws ec2 delete-security-group --group-id sg-0c4c68486c76c3bff
+aws ec2 detach-internet-gateway --vpc-id vpc-0bf99adedf309c1b6 --internet-gateway-id igw-0fb3fd1e6e68dc435
+aws ec2 delete-vpc --vpc-id vpc-0bf99adedf309c1b6
+aws ec2 detach-internet-gateway --vpc-id vpc-0eeae13a7f4edbaa8 --internet-gateway-id igw-0d83c95cb4beae19b
+aws ec2 delete-vpc --vpc-id vpc-0eeae13a7f4edbaa8
+aws ec2 delete-internet-gateway --internet-gateway-id igw-0fb3fd1e6e68dc435
+aws ec2 delete-internet-gateway --internet-gateway-id igw-0d83c95cb4beae19b
+~~~~~~~~~~~~~~~~~~~ TERMINATION ~~~~~~~~~~~~~~~~~~~~
