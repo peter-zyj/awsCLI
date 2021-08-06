@@ -32,7 +32,7 @@ aws ec2 authorize-security-group-egress --group-id sg-08a662bb3c420fc3f --protoc
 aws ec2 create-subnet --vpc-id vpc-0eeae13a7f4edbaa8 --cidr-block 10.0.250.0/24
 aws ec2 create-tags --tag Key=Name,Value=runman_SUB_App_1_MGMT --resources subnet-030cca589fa1c4cb7
 aws elbv2 create-target-group --name runman-TG --protocol GENEVE --port 6081 --vpc-id vpc-0bf99adedf309c1b6 --target-type ip
-aws ec2 describe-route-tables @runman=(?s)Main\: true(?:[^M]|M(?!ain\:))*?VpcId: {vpc-0bf99adedf309c1b6}@
+aws ec2 describe-route-tables @runman=(?s)Main\: true(?:[^M]|M(?!ain\:))*?VpcId: vpc-0bf99adedf309c1b6@
 aws ec2 create-route --route-table-id rtb-04986e9825ec5d042 --destination-cidr-block 0.0.0.0/0 --gateway-id igw-0fb3fd1e6e68dc435
 ~~~~~~~~~~~~~~~~~~~ TERMINATION ~~~~~~~~~~~~~~~~~~~~
 aws ec2 delete-route --route-table-id rtb-04986e9825ec5d042 --destination-cidr-block 0.0.0.0/0

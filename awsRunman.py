@@ -146,10 +146,11 @@ def runman(fileName, action=None) -> str:
                 elif "~~~" in line:
                     continue
 
-                cmd = runman = None
+                cmd = None
+                runman = None
                 if "@runman" in line:
-                    cmd = re.compile(".*?(?=@runman)")[0].strip()
-                    runman = re.compile("@runman(.*?)@")[0].strip()
+                    cmd = re.compile(".*?(?=@runman)").findall(line)[0].strip()
+                    runman = re.compile("@runman=(.*?)@").findall(line)[0].strip()
                 else:
                     cmd = line.strip()
 
@@ -157,8 +158,8 @@ def runman(fileName, action=None) -> str:
                 #search/replace ID
                 for p in id_list:
                     res = re.compile(p).findall(cmd)
-                    if not runman:
-                        res_runman = re.compile(p).findall(cmd)
+                    if runman:
+                        res_runman = re.compile(p).findall(runman)
                         if res_runman and res_runman[0] in res_dict:
                             res_id = res_runman[0]
                             runman = runman.replace(res_id, res_dict[res_id])
@@ -194,7 +195,7 @@ def runman(fileName, action=None) -> str:
                 #search/add ID
                 resp2 = re.sub("AWS-Auto#.*", "", resp)
 
-                if not runman:  #limit the search scope for obscure command
+                if runman:  #limit the search scope for obscure command
                     try:
                         resp2 = re.compile(runman).findall(resp2)[0]
                     except:
