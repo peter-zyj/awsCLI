@@ -17,6 +17,7 @@ from lib_yijun import print_color
 #           update ELASTIC_IP
 #           update NETWORK_INTERFACE (SourceDestCheck)
 #           update LISTENER
+#           Bug fix: ROUTE-> main route
 class resource(object):
     def __init__(self):
         self.creation_dependency = None
@@ -874,8 +875,10 @@ class ROUTE(resource):
 
     def _map_vps_route_id(self, cli_handler, vpc_id):
         try:
-            res = cli_handler.raw_cli_res("aws ec2 describe-route-tables", show=False)
-            pattern = f'(?s)RouteTableId(?:[^R]|R(?!outeTableId))*?VpcId: {vpc_id}'
+            pattern = f'(?s)Main\: true(?:[^M]|M(?!ain\:))*?VpcId: {vpc_id}'
+            #runman-- used to limit the search scope
+            res = cli_handler.raw_cli_res("aws ec2 describe-route-tables", runman=pattern, show=False)
+            # pattern = f'(?s)RouteTableId(?:[^R]|R(?!outeTableId))*?VpcId: {vpc_id}'
             filter = re.compile(pattern).findall(res)[0]
             return re.compile(r"RouteTableId: (.*)").findall(filter)[0]
         except Exception as e:
@@ -1350,7 +1353,7 @@ class EC2INSTANCE(resource):
             reName = reName.replace("self.temp_name", name)
             cli_handler.raw_cli_res(reName)
 
-            time.sleep(60) #wait for linux cli ready
+            time.sleep(60)  # wait for linux cli ready
             if self.cmd:
                 self._add_global_access(cli_handler, sg_id)
                 self._cmd_handler(cli_handler, name)
@@ -1370,14 +1373,15 @@ class EC2INSTANCE(resource):
                 else:
                     cli_handler.raw_cli_res(termination, exec=False)
 
-    def _add_global_access(self, cli_handler, sg_id):
+    def _add_global_access(self, cli_handler, sg_id):  # TBD, bug...!
         # get main route from SG
         if sg_id:
             resp1 = cli_handler.raw_cli_res(f"aws ec2 describe-security-groups --group-ids {sg_id}", show=False)
             vpc_id = re.compile(r"VpcId: (.*)").findall(resp1)[0]
 
             resp2 = cli_handler.raw_cli_res("aws ec2 describe-route-tables", show=False)
-            pattern2 = f'(?s)RouteTableId(?:[^R]|R(?!outeTableId))*?VpcId: {vpc_id}'
+            # pattern2 = f'(?s)RouteTableId(?:[^R]|R(?!outeTableId))*?VpcId: {vpc_id}'
+            pattern2 = f'(?s)Main\: true(?:[^M]|M(?!ain\:))*?VpcId: {vpc_id}'
             filter = re.compile(pattern2).findall(resp2)[0]
             rt_id = re.compile(r"RouteTableId: (.*)").findall(filter)[0]
 

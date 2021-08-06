@@ -7,6 +7,14 @@ import yaml
 from awsAPIv3 import *
 from lib_yijun import print_color
 
+special_list = []
+special_list.append("aws ec2 describe-route-tables")
+
+def special_handling(cmd, pattern, resp):
+    if cmd  == "aws ec2 describe-route-tables":
+        p1 = '(?s)Main: true.*?RouteTableId: (.*?)(?=\n).*?VpcId: (.*?)(?=\n)'
+        mainRT_list = re.compile(p1).findall(resp)
+
 
 def runman(fileName, action=None) -> str:
         print_color("[Info][aws][convert]: Select the default AWS config/credentials","green")
@@ -137,15 +145,28 @@ def runman(fileName, action=None) -> str:
                     break
                 elif "~~~" in line:
                     continue
-                line = line.strip()
+
+                cmd = runman = None
+                if "@runman" in line:
+                    cmd = re.compile(".*?(?=@runman)")[0].strip()
+                    runman = re.compile("@runman(.*?)@")[0].strip()
+                else:
+                    cmd = line.strip()
+
                 # print("Debug:Line=",line)
                 #search/replace ID
                 for p in id_list:
-                    res = re.compile(p).findall(line)
+                    res = re.compile(p).findall(cmd)
+                    if not runman:
+                        res_runman = re.compile(p).findall(cmd)
+                        if res_runman and res_runman[0] in res_dict:
+                            res_id = res_runman[0]
+                            runman = runman.replace(res_id, res_dict[res_id])
+
                     if res and res[0] in res_dict:
                         # print("search/replace ID 1")
                         id = res[0]
-                        line = line.replace(id, res_dict[id])
+                        cmd = cmd.replace(id, res_dict[id])
                     elif res:
                         id = res[0]
                         try:
@@ -155,28 +176,36 @@ def runman(fileName, action=None) -> str:
                             tmp_obj.close()
                             return
                         res_dict[id] = v
-                        line = line.replace(id, v)
+                        cmd = cmd.replace(id, v)
 
                 num = 0
                 while num < 50:
-                    resp = tmp_obj.raw_cli_res(line)
+                    resp = tmp_obj.raw_cli_res(cmd)
                     if "error occurred" in resp and "already exists" not in resp:
                         num += 1
                         time.sleep(5)
                     else:
                         break
                 if num >= 50:
-                    print(f"[Warning][aws][runman][creation]::[{lineNum}]GiveUp cli={line}, after 50 tries", "yellow")
+                    print(f"[Warning][aws][runman][creation]::[{lineNum}]GiveUp cli={cmd}, after 50 tries", "yellow")
                     tmp_obj.close()
                     return
 
                 #search/add ID
                 resp2 = re.sub("AWS-Auto#.*", "", resp)
+
+                if not runman:  #limit the search scope for obscure command
+                    try:
+                        resp2 = re.compile(runman).findall(resp2)[0]
+                    except:
+                        print_color(f"[Warning][aws][runman][creation] Runman not working: {runman}\n{resp2}", "yellow")
+
                 for p in id_list:
+                    # if cmd in special_list:
+                    #     special_handling(cmd, runman, resp2)
+                    # else:
                     res_list = re.compile(p).findall(resp2)
-                    # if res_list and res_list[0] not in orphaned[p]:
-                    #     orphaned[p].append(res_list[0])
-                    if res_list:
+                    if res_list and res_list[0] not in res_dict.values():
                         orphaned[p].add(res_list[0])
 
                 print("Debug:orphaned=", orphaned)

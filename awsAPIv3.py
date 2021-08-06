@@ -10,6 +10,7 @@ from lib_yijun import print_color
 #version 3: add blind function to fetch address/id of aws resource
 #version 3.1: update Manual_termination to suport runman
 #version 3.2: config syntax check
+#version 3.3: record_cli add runman notes
 
 class aws(object):
     def __init__(self, configuration=None, record=True, debug=False):
@@ -198,9 +199,9 @@ class aws(object):
             res = os.popen(f"cat {self.home}/.aws/credentials").read()
             print(res)
 
-    def raw_cli_res(self, commandline, show=True, exec=True):
+    def raw_cli_res(self, commandline, runman=None, show=True, exec=True):
 
-        self.record_cli(commandline)
+        self.record_cli(commandline, runman)
         if not self.resCleanUp:
             if "res_clean" in inspect.stack()[2][3]:
                 return ""
@@ -311,11 +312,14 @@ class aws(object):
         else:
             print_color(yaml.dump(self.tobeCleanUp), "magenta")
 
-    def record_cli(self, cmd):
+    def record_cli(self, cmd, runman=None):
         if self.cliLog:
             try:
                 with open(self.cliLog, "a") as file:
-                    cli = cmd + "\n"
+                    if runman:
+                        cli = cmd + " @runman=" + runman + "@" + "\n"
+                    else:
+                        cli = cmd + "\n"
                     file.write(cli)
             except NameError:
                 pass
