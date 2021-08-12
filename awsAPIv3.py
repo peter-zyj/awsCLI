@@ -621,7 +621,7 @@ if __name__ == "__main__":
         config_file = sys.argv[1]
         record = config_file.replace(".config", ".log")
     else:
-        config_file = "aws_tb_pytest_west_1_ASA_dist72.config"
+        config_file = "aws_tb_pytest_west_1_ASA_vxlan.config"
         record = True
 
     setting = {}

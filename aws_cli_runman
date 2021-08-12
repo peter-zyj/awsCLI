@@ -38,7 +38,9 @@ aws ec2 create-route --route-table-id rtb-04986e9825ec5d042 --destination-cidr-b
 aws ec2 delete-route --route-table-id rtb-04986e9825ec5d042 --destination-cidr-block 0.0.0.0/0
 aws elbv2 delete-target-group --target-group-arn arn:aws:elasticloadbalancing:us-west-1:439462095416:targetgroup/runman-TG/00180dfb99a1a98023
 aws ec2 delete-subnet --subnet-id subnet-030cca589fa1c4cb7
-aws ec2 delete-security-group --group-id sg-08a662bb3c420fc3f
+aws ec2 delete-security-group --group-id sg-08a662bb3c420f
+
+
 aws ec2 delete-security-group --group-id sg-0a8e64c6ec4a04933
 aws ec2 delete-security-group --group-id sg-0c4973275f6887aba
 aws ec2 delete-security-group --group-id sg-0c4c68486c76c3bff
