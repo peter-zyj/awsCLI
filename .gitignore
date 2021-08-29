@@ -2,8 +2,10 @@
 !awsRES.py
 !awsRESv3.py
 !awsRESv4.py
+!awsRESv5.py
 !awsAPIv2.py
 !awsAPIv3.py
+!awsAPIv4.py
 !aws_cli_v2.config
 !aws_cli_runman
 !test_aws_cli.py
@@ -24,6 +26,7 @@
 !influxdb_yijun.py
 !aws_tb_template_hybrid.config
 !aws_tb_pytest_west_1_ASA_dist72.config
+!aws_tb_pytest_west_2_ASA8_Geneve_CCL.config
 !pytest_day0.txt
 !pytest_day999.txt
 !jenkins_template_geneve.py

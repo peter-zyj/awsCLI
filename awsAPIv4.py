@@ -4,13 +4,14 @@ import shutil, atexit
 import subprocess,collections
 import yaml
 
-from awsRESv4 import *
+from awsRESv5 import *
 from lib_yijun import print_color
 #version 2: add command cli recording
 #version 3: add blind function to fetch address/id of aws resource
 #version 3.1: update Manual_termination to suport runman
 #version 3.2: config syntax check
 #version 3.3: record_cli add runman notes
+#version 4: support res-counter by update find_id()
 
 class aws(object):
     def __init__(self, configuration=None, record=True, debug=False):
@@ -379,13 +380,21 @@ class aws(object):
             print_color(f"[ERROR][awsAPI._res_arrange]: Empty resource content", "red")
             return
 
-        good_result, complain = self._syntax_check()
-        if not good_result:
-            print_color("[Error][awsAPI.load_deplyment]:configure file syntax not correct", "red")
-            print_color(f"can't find dependency of {complain}", "red")
-            sys.exit(1)
-        else:
-            print_color("Syntax Check...Pass", "green")
+        # items = self.res_yaml.keys()
+        # uniq_items = set(items)
+        #
+        # if items != uniq_items:
+        #     print_color("there are duplicated component name!", "red")
+        #     sys.exit(1)
+
+        # good_result, complain = self._syntax_check()
+        # if not good_result:
+        #     print_color("[Error][awsAPI.load_deplyment]:configure file syntax not correct", "red")
+        #     print_color(f"can't find dependency of {complain}", "red")
+        #     sys.exit(1)
+        # else:
+        self._syntax_check()
+        print_color("Syntax Check...Pass", "green")
 
         for res, content in self.res_yaml.items():
             tagName, resName = re.compile(r'(.*?)\((.*?)\)').findall(res)[0]
@@ -507,6 +516,54 @@ class aws(object):
                             break
 
     def _syntax_check(self):
+        res, err = self._duplication_check()
+        if not res:
+            print_color("[Error][awsAPI.load_deplyment]:configure file syntax not correct", "red")
+            print_color(err, "red")
+            sys.exit(1)
+
+        res, err = self._dependency_check()
+        if not res:
+            print_color("[Error][awsAPI.load_deplyment]:configure file syntax not correct", "red")
+            print_color(f"can't find dependency of {err}", "red")
+            sys.exit(1)
+
+        res, err = self._interface_index_check()
+        if not res:
+            print_color("[Error][awsAPI.load_deplyment]:configure file syntax not correct", "red")
+            print_color(err, "red")
+            sys.exit(1)
+
+    def _interface_index_check(self):
+        check_dict = {}
+        res = True
+        err = None
+        for key, content in self.res_yaml.items():
+            if "(BIND)" in key:
+                ec2_inst = content["instance-id"]
+                idx = content["device-index"]
+                if ec2_inst not in check_dict and "device-index" in content:
+                    check_dict[ec2_inst] = [idx]
+                elif "device-index" in content:
+                    if idx in check_dict[ec2_inst]:
+                        res = False
+                        err = f"Duplicated index({idx}) of ec2instance({ec2_inst})"
+                        break
+                    else:
+                        check_dict[ec2_inst].append(idx)
+        return res, err
+
+    def _duplication_check(self):
+        items = self.res_yaml.keys()
+        uniq_items = set(items)
+        res = True
+        err = None
+        if items != uniq_items:
+            res = False
+            err = "There are duplicated component name!"
+        return res, err
+
+    def _dependency_check(self):
         res_set = set()
         dep_set = set()
 
@@ -621,7 +678,7 @@ if __name__ == "__main__":
         config_file = sys.argv[1]
         record = config_file.replace(".config", ".log")
     else:
-        config_file = "aws_tb_pytest_west_1_ASA_vxlan.config"
+        config_file = "aws_tb_pytest_west_2_ASA8_Geneve_CCL.config"
         record = True
 
     setting = {}
@@ -639,7 +696,7 @@ if __name__ == "__main__":
     except:
         pass
 
-    obj = aws(setting, record=record, debug=True)
+    obj = aws(setting, record=record, debug=False)
     atexit.register(obj.close)
 
     import signal
