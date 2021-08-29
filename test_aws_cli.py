@@ -2110,7 +2110,7 @@ def test_manual_termination():
     obj = aws(setting, record=False)
     atexit.register(obj.close)
 
-    name = "aws_cli_20-38-01_25-07-2021"
+    name = "aws_cli_16-26-54_23-08-2021"
     obj.manual_termination(name)
 
     obj.close()
@@ -2281,6 +2281,14 @@ PytestExtra_NWInterface_FTD_3_Bind(BIND):
     obj.load_deployment(content=cont)
     obj.start_deployment()
 
+@pytest.mark.demoShow
+def test_demoShow():
+    obj = aws(record="demoShow.log", debug=False)
+    atexit.register(obj.close)
+
+    obj.load_deployment("aws_tb_pytest_west_2_ASA_vxlan.config")
+    obj.start_deployment()
+    print("~~~~~~~~~All Set~~~~~~~~~~")
 @pytest.mark.runman
 def test_runman():
     import awsRunman
@@ -2291,6 +2299,31 @@ def test_runman_term():
     # aws.runman("aws_runman_2021-05-17_07-14-18", "termination")
     import awsRunman
     awsRunman.runman("aws_cli_runman.removal", "termination")
+
+@pytest.mark.copycount
+def test_copycount():
+    cont = '''
+test-CLX_NWInterface_ASA1(NETWORK_INTERFACE):
+  subnet-id: NLB-Cluster-Sub-2-Data2
+  description: Geneve-CLX Data Network for ASA1
+  groups: NLB-Cluster-SG
+  private-ip-address: 10.0.52.123
+  no-source-dest-check: '*'
+  action:
+    copy_count: 8
+    query_from:
+      - NLB-Cluster-SG
+      - NLB-Cluster-Sub-2-Data2
+    cleanUP: True
+'''
+    from awsAPIv4 import aws
+    obj = aws(record=False, debug=False)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+    print(obj.find_id("test-CLX_NWInterface_ASA1"))
 
 @pytest.mark.yijun_xfail
 @pytest.mark.xfail(raises=ZeroDivisionError)
