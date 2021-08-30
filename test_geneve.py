@@ -21,7 +21,7 @@ def load_asa_config(asa_address, asa_jb_ip="20.0.250.10", debug=False):
     conn, result, cont = Geneve_reply(conn)
 
     # conn.sendline("copy http://20.0.250.10/geneve.smp disk0:/.")
-    conn.sendline(f"copy http://{asa_jb_ip}/geneve.smp disk0:/.")
+    conn.sendline(f"copy http://{asa_jb_ip}/geneve.smp disk0:/")
     conn, result, cont = Geneve_reply(conn, timeout=120, debug=debug)
 
     conn.sendline("conf term")
@@ -57,6 +57,37 @@ def load_asa_config(asa_address, asa_jb_ip="20.0.250.10", debug=False):
     conn.sendline("show run")
     conn, result, cont = Geneve_reply(conn)
     assert "20.0.1.101" in cont
+
+def load_asa_config_multi(asa_address, name=None, asa_jb_ip="20.0.250.10", debug=False):
+    import pexpect
+
+    # asa_address = "ssh -i 'testDog.pem' admin@3.142.241.180"
+
+    conn = pexpect.spawn(asa_address)
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("en")
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline(f"copy http://{asa_jb_ip}/geneve.smp disk0:/")
+    conn, result, cont = Geneve_reply(conn, timeout=120, debug=debug)
+
+    conn.sendline("conf term")
+    conn, result, cont = Geneve_reply(conn)
+
+    if name:
+        conn.sendline(f"hostname {name}")
+        conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("boot system disk0:/geneve.smp")
+    conn, result, cont = Geneve_reply(conn)
+
+    conn.sendline("reload")
+    conn, result, cont = Geneve_reply(conn, debug=debug)
+
+    print('WAITED', wait(10))
+    conn.close();
+    del conn
 
 def asa_config(asa_address, lines, debug=False) -> tuple:
     import pexpect
@@ -302,6 +333,29 @@ def Basic_miss_config():
 
     assert "100% packet loss" in resp1
     ssh.close()
+
+@pytest.mark.clusterConfig
+def test_cluster_config(local_asa):
+    asa_dict = local_asa
+    print(asa_dict)
+
+    asa_jb_ip = "30.0.250.20"
+    job_list = []
+    from multiprocessing import Process
+    for name, ip in asa_dict.items():
+        asa_address = f"ssh -i 'testMouse.pem' admin@{ip}"
+        name = name.replace("#", "-")
+
+        timer_p = Process(target=load_asa_config_multi, args=(asa_address, name, asa_jb_ip))
+        timer_p.start()
+        job_list.append(timer_p)
+
+    for job in job_list:
+        job.join()
+        job.close()
+
+#Load config
+#TBD
 
 @pytest.mark.geneveASA
 @pytest.mark.basic1to2
@@ -629,6 +683,32 @@ def local_run(show=False):
 
 
     yield app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip
+    aws_obj.close()
+
+@pytest.fixture()
+def local_asa(show=False):
+
+    baseName = "Geneve-CLX8-EC2-ASA"
+    count = 8
+
+    if "aws_obj" not in globals():
+        aws_obj = aws(record=False)
+
+    asa_dict = {}
+
+    for idx in range(count):
+
+        if baseName:
+            name = baseName + "#" + str(idx)
+        else:
+            pytest.fail("base name not specified!")
+            return
+
+        asa = aws_obj.blind(name, "EC2INSTANCE", show=show)
+        asa_ip = asa["public_ip"]
+        asa_dict[name] = asa_ip
+
+    yield asa_dict
     aws_obj.close()
 
 
