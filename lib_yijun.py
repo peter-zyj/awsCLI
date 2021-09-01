@@ -63,6 +63,7 @@ asa_reload = "System config has been modified. Save\? \[Y\]es\/\[N\]o:"
 # asa_overwritten_confirm = "Do you want to over write? \[confirm\]"
 asa_confirm = "\[confirm\]"
 asa_copy_confirm = "\[.*?\]\?"
+asa_shutdown = "- SHUTDOWN NOW -"
 
 asav_geneve_prompt = []
 asav_geneve_prompt.append(asa_raw)
@@ -75,6 +76,7 @@ asav_geneve_prompt.append(asa_firstlogin)
 asav_geneve_prompt.append(asa_reload)
 asav_geneve_prompt.append(asa_confirm)
 asav_geneve_prompt.append(asa_copy_confirm)
+asav_geneve_prompt.append(asa_shutdown)
 # asav_geneve_prompt.append(asa_overwritten_confirm)
 
 
@@ -257,10 +259,18 @@ def Ocean_load(tnt, fileName, timeout=5, debug=False):
             tnt.sendline(line)
             tnt, result, cont = Ocean_reply(tnt, debug=debug, timeout=timeout)
 
-def Geneve_reply(tnt, timeout=120, debug=False):
+def Geneve_reply(tnt, timeout=120, debug=False, keyword=None):
     try:
         start_time = time.time()
-        result = tnt.expect([pexpect.TIMEOUT] + asav_geneve_prompt, timeout=timeout)
+        if keyword:
+            asav_geneve_prompt_upd = []
+            for item in asav_geneve_prompt:
+                item = item.replace("ciscoasa", keyword)
+                asav_geneve_prompt_upd.append(item)
+        else:
+            asav_geneve_prompt_upd = asav_geneve_prompt
+
+        result = tnt.expect([pexpect.TIMEOUT] + asav_geneve_prompt_upd, timeout=timeout)
         tnt.logfile = None
 
         if result == 0:
@@ -348,6 +358,12 @@ def Geneve_reply(tnt, timeout=120, debug=False):
             tnt.sendline("")
             _, _, tmp_content = Geneve_reply(tnt, timeout=timeout, debug=debug)
             content += "\n" + tmp_content
+        elif result == 11:
+            res = "11:Geneve_reply: success(asa_shutdown)!"
+            end_time = time.time()
+            gap = round(end_time - start_time,2)
+            if debug: print(f"{res} # cost {gap}s")
+            content = tnt.before.decode()+tnt.after.decode()  #content = str(tnt.before)+str(tnt.after)
         else:
             res = "{result}:Geneve_reply: failure(unknown)".format(result=result)
             content = None

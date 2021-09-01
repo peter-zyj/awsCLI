@@ -77,15 +77,17 @@ def load_asa_config_multi(asa_address, name=None, asa_jb_ip="20.0.250.10", debug
 
     if name:
         conn.sendline(f"hostname {name}")
-        conn, result, cont = Geneve_reply(conn)
+        conn, result, cont = Geneve_reply(conn, keyword=name)
 
     conn.sendline("boot system disk0:/geneve.smp")
-    conn, result, cont = Geneve_reply(conn)
+    conn, result, cont = Geneve_reply(conn, keyword=name)
 
+    print(f"~~~ start reload:{name} ~~~~")
     conn.sendline("reload")
-    conn, result, cont = Geneve_reply(conn, debug=debug)
+    conn, result, cont = Geneve_reply(conn, debug=debug, keyword=name)
 
-    print('WAITED', wait(10))
+    print(f"~~~ system start reboot:{name} ~~~")
+    print('WAITED', wait(120))
     conn.close();
     del conn
 
@@ -339,11 +341,13 @@ def test_cluster_config(local_asa):
     asa_dict = local_asa
     print(asa_dict)
 
+    key = "testCat.pem"
     asa_jb_ip = "30.0.250.20"
     job_list = []
     from multiprocessing import Process
+    timer_start = time.time()
     for name, ip in asa_dict.items():
-        asa_address = f"ssh -i 'testMouse.pem' admin@{ip}"
+        asa_address = f"ssh -i '{key}' admin@{ip}"
         name = name.replace("#", "-")
 
         timer_p = Process(target=load_asa_config_multi, args=(asa_address, name, asa_jb_ip))
@@ -354,6 +358,8 @@ def test_cluster_config(local_asa):
         job.join()
         job.close()
 
+    end = time.time() - timer_start
+    print("Info: time cost == ", end)
 #Load config
 #TBD
 
@@ -688,8 +694,8 @@ def local_run(show=False):
 @pytest.fixture()
 def local_asa(show=False):
 
-    baseName = "Geneve-CLX8-EC2-ASA"
-    count = 8
+    baseName = "Geneve-CLX-EC2-ASA#1"
+    count = 1
 
     if "aws_obj" not in globals():
         aws_obj = aws(record=False)
@@ -698,8 +704,10 @@ def local_asa(show=False):
 
     for idx in range(count):
 
-        if baseName:
+        if baseName and count > 1:
             name = baseName + "#" + str(idx)
+        elif count == 1:
+            name = baseName
         else:
             pytest.fail("base name not specified!")
             return
