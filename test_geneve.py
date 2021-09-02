@@ -336,6 +336,19 @@ def Basic_miss_config():
     assert "100% packet loss" in resp1
     ssh.close()
 
+# @pytest.fixture(scope="module")
+# def sss():
+#     print("~~~~~sss~~~~~")
+#
+# @pytest.mark.shit
+# def test_shit(sss):
+#     print("shit")
+#
+# @pytest.mark.shit
+# def test_shit2(sss):
+#     print("shit2")
+
+
 @pytest.mark.clusterConfig
 def test_cluster_config(local_asa):
     asa_dict = local_asa
