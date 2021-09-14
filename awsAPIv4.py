@@ -601,6 +601,7 @@ class aws(object):
 
     # @staticmethod
     def blind(self, resName, typeName=None, fullList=False, show=True, verbose=False):
+
         if not typeName:
             cmd = f"aws ec2 describe-tags --filters Name=tag-value,Values={resName}"
             res = self.raw_cli_res(cmd, show=show)
@@ -619,7 +620,7 @@ class aws(object):
             else:
                 if verbose:
                     if not fullList:
-                        ans = self.blind(resName, typeName=type)
+                        ans = self.blind(resName, typeName=name_mapping[type])
                         return ans
                     else:
                         print_color("[Warning][blind]fullList not supported in verbose mode")
@@ -678,7 +679,7 @@ class aws(object):
                 print_color(f"[Warning][aws][blind] not exist:{resName}", "yellow")
                 return None
 
-            res = f"[Warning][aws][blind]: unsupproted type:{typeName}"
+            res = f"[Warning][aws][blind]: unsupported type:{typeName}"
             print_color(res, "yellow")
             return result
 

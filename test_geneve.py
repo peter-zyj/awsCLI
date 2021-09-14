@@ -344,7 +344,6 @@ def test_cluster_config(local_asa):
 #Load config
 #TBD
 
->>>>>>> Stashed changes
 @pytest.mark.geneveASA
 @pytest.mark.basic1to2
 def test_Basic_PingGoogle(local_run):

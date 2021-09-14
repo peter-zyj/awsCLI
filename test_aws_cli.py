@@ -2284,24 +2284,24 @@ PytestExtra_NWInterface_FTD_3_Bind(BIND):
 @pytest.mark.followup
 def test_followup_ec2():
     cont = '''
-Boot-Up-data-interface-ASA-JB(FollowUP):
+Boot-Up-data-interface-ASA-JB(FollowUp):
   type: EC2INSTANCE
   network-interface-id: Geneve-72_NWInterface_ASA_JB
   instance-id: Geneve-72-EC2-ASA-JB
   key-name: testMonkey
   action:
-    bind_to:
-      - Geneve-72_NWInterface_ASA_JB
-      - Geneve-72-EC2-ASA-JB
     cmd:
       setup:
         - sudo ifconfig eth1 down
-        - sudo ifconfig eth1 {Geneve-72_NWInterface_ASA_JB}/24
+        - sudo ifconfig eth1 {Geneve-72_NWInterface_ASA_JB[private_ip]}/24
         - sudo ifconfig eth1 up
       cancel:
         - hostname
       teardown:
-        - sudo ifconfig eth1 down  
+        - sudo ifconfig eth1 down
+    query_from:
+      - Geneve-72_NWInterface_ASA_JB
+      - Geneve-72-EC2-ASA-JB
 '''
 
     from awsAPIv4 import aws

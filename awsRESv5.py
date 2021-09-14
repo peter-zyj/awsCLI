@@ -22,6 +22,10 @@ from lib_yijun import print_color
 #            implement NETWORK_INTERFACE counter
 #            implement new type FollowUp
 
+name_mapping = {}
+name_mapping["network-interface"] = "NETWORK_INTERFACE"
+name_mapping["instance"] = "EC2INSTANCE"
+
 class resource(object):
     def __init__(self):
         self.creation_dependency = None
@@ -1984,7 +1988,7 @@ class FollowUp(resource):
 
     def _action_handler(self, action_yaml):
         for key, value in action_yaml.items():
-            if key == "bind_to":
+            if key == "bind_to" or key == "query_from":
                 if type(value) == str:
                     self.metaDict[value] = None
                 else:
@@ -1997,46 +2001,58 @@ class FollowUp(resource):
             elif key == "cmd":
                 if "setup" in value:
                     self.creation += value["setup"]
-                elif "teardown" in value:
+                if "teardown" in value:
                     self.termination += value["teardown"]
-                elif "cancel" in value:
+                if "cancel" in value:
                     self.cancellation += value["cancel"]
 
     def exec_creation(self, cli_handler):
 
         self.query_replacement(cli_handler, self.metaDict, verbose=True)
-        # for item in self.metaDict:
-        #     query_dict = {}
-        #     query_dict[item] = "EC2INSTANCE"
-        #     self.query_replacement(cli_handler, query_dict)
-        #     self.metaDict[item] = query_dict[item]
+        self.creation = self._cmd_handling(self.creation)
 
         if "type" in self.raw_yaml:
             if self.raw_yaml["type"] == "EC2INSTANCE":
                 ins_name = self.raw_yaml["instance-id"]
                 self.public_IP = self.metaDict[ins_name]["public_ip"]
 
-                key = self.raw_yaml["key-name"]
+                self.phase = "wait4cancel"
+                key = self.raw_yaml["key-name"]+".pem"
                 exec_cli(self.public_IP, self.creation, "ubuntu", keyFile=key)
                 self.phase = "wait4teardown"
 
     def exec_termination(self, cli_handler, exec=True):
         if self.phase == "wait4teardown":
-            key = self.raw_yaml["key-name"]
+            self.termination = self._cmd_handling(self.termination)
+            key = self.raw_yaml["key-name"] + ".pem"
             exec_cli(self.public_IP, self.termination, "ubuntu", keyFile=key)
             self.phase = "done"
-        elif self.phase == "wait4setup":
-            key = self.raw_yaml["key-name"]
+        elif self.phase == "wait4cancel":
+            self.cancellation = self._cmd_handling(self.cancellation)
+            key = self.raw_yaml["key-name"] + ".pem"
             exec_cli(self.public_IP, self.cancellation, "ubuntu", keyFile=key)
             self.phase = "done"
-        elif self.phase == "done":
+        elif self.phase == "done" or self.phase == "wait4setup":
             pass
+
+    def _cmd_handling(self, cmd_list):
+        ans = []
+        for cmd in cmd_list:
+            for key, value in self.metaDict.items():
+                if key in cmd:
+                    p1 = r"\{%s\[(.*?)\]\}" % (key)
+                    res = re.compile(p1).findall(cmd)
+                    for item in res:
+                        cmd = cmd.replace("{%s[%s]}"%(key,item),value[item])
+
+            ans.append(cmd)
+        return ans
 
 def exec_cli(ip, cmd_List, user, passwd=None, keyFile=None):
     import paramiko
 
     if keyFile and not os.path.exists(keyFile):
-        print_color("[ERROR][EC2INSTANCE][_cmd_handler]: Key file not exist in working dir:" + os.getcwd(),
+        print_color(f"[ERROR][EC2INSTANCE][_cmd_handler]: Key file {keyFile} not exist in working dir:" + os.getcwd(),
                     "red")
         return False
 
@@ -2048,6 +2064,9 @@ def exec_cli(ip, cmd_List, user, passwd=None, keyFile=None):
             break
         except Exception as e:
             print_color(f"[ERROR][exec_cli][SSH]:{e}", "red")
+            print_color(f"IP={ip}","red")
+            print_color(f"user={user}","red")
+            print_color(f"keyFile={keyFile}","red")
             time.sleep(5)
 
     for cmd in cmd_List:
