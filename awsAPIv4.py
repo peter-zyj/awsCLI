@@ -600,21 +600,31 @@ class aws(object):
         return None
 
     # @staticmethod
-    def blind(self, resName, typeName=None, fullList=False, show=True):
+    def blind(self, resName, typeName=None, fullList=False, show=True, verbose=False):
         if not typeName:
             cmd = f"aws ec2 describe-tags --filters Name=tag-value,Values={resName}"
             res = self.raw_cli_res(cmd, show=show)
             pattern = r"ResourceId: (.*)"
+            pattern2 = r"ResourceType: (.*)"
             try:
                 if not fullList:
                     id = re.compile(pattern).findall(res)[0].strip()
+                    type = re.compile(pattern2).findall(res)[0].strip()
                 else:
                     id = re.compile(pattern).findall(res)
+                    type = re.compile(pattern2).findall(res)
             except IndexError:
                 print_color(f"[Warning][aws][blind] not exist:{resName}", "yellow")
                 return None
             else:
-                return id
+                if verbose:
+                    if not fullList:
+                        ans = self.blind(resName, typeName=type)
+                        return ans
+                    else:
+                        print_color("[Warning][blind]fullList not supported in verbose mode")
+                else:
+                    return id
         else: #fullList not supported
             result = collections.defaultdict(lambda: None)
             try:
@@ -678,7 +688,7 @@ if __name__ == "__main__":
         config_file = sys.argv[1]
         record = config_file.replace(".config", ".log")
     else:
-        config_file = "aws_tb_pytest_west_2_ASA8_Geneve_CCL.config"
+        config_file = "aws_tb_pytest_east_2_ASA_dist72.config"
         record = True
 
     setting = {}

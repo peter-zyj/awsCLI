@@ -20,7 +20,8 @@ from lib_yijun import print_color
 #           Bug fix: ROUTE-> main route
 # version 5: implement EC2INSTANCE counter
 #            implement NETWORK_INTERFACE counter
-#
+#            implement new type FollowUp
+
 class resource(object):
     def __init__(self):
         self.creation_dependency = None
@@ -63,14 +64,14 @@ class resource(object):
     def exec_termination(self, cli, exe):
         print("No definition of termination in object: ", self.__class__.__name__)
 
-    def query_replacement(self, handler, query_dict):
+    def query_replacement(self, handler, query_dict, verbose=False):
         for key, value in query_dict.items():
             if value:
                 result = handler.blind(key, typeName=value)
-                query_dict[key] = {value: result}
+                query_dict[key] = result
             else:
-                id = handler.blind(key)
-                query_dict[key] = id
+                res = handler.blind(key, verbose=verbose)
+                query_dict[key] = res
 
 
 class INTERNET_GATEWAY(resource):
@@ -1961,6 +1962,118 @@ class TERMINATION(resource):
             cli_handler.close(exec=True)
             sys.exit(1)
 
+class FollowUp(resource):
+    def __init__(self, tagName, content):
+        super().__init__()
+        self.name = tagName
+        self.raw_yaml = content
+        self.creation = []
+        self.termination = []
+        self.cancellation = []
+        self.phase = "wait4setup" #setup,teardown,Done
+        self.metaDict = collections.defaultdict(lambda: None)
+        self.public_IP = None
+        self._cmd_composition()
+
+    def _cmd_composition(self):
+        for key, value in self.raw_yaml.items():
+            if key != "action":
+                pass
+            else:
+                self._action_handler(value)
+
+    def _action_handler(self, action_yaml):
+        for key, value in action_yaml.items():
+            if key == "bind_to":
+                if type(value) == str:
+                    self.metaDict[value] = None
+                else:
+                    for item in value:
+                        self.metaDict[item] = None
+
+            elif key == "cleanUP":
+                # self.keepAlive = False if str(value).lower() == "true" else True
+                pass #class followup dont require cleanup
+            elif key == "cmd":
+                if "setup" in value:
+                    self.creation += value["setup"]
+                elif "teardown" in value:
+                    self.termination += value["teardown"]
+                elif "cancel" in value:
+                    self.cancellation += value["cancel"]
+
+    def exec_creation(self, cli_handler):
+
+        self.query_replacement(cli_handler, self.metaDict, verbose=True)
+        # for item in self.metaDict:
+        #     query_dict = {}
+        #     query_dict[item] = "EC2INSTANCE"
+        #     self.query_replacement(cli_handler, query_dict)
+        #     self.metaDict[item] = query_dict[item]
+
+        if "type" in self.raw_yaml:
+            if self.raw_yaml["type"] == "EC2INSTANCE":
+                ins_name = self.raw_yaml["instance-id"]
+                self.public_IP = self.metaDict[ins_name]["public_ip"]
+
+                key = self.raw_yaml["key-name"]
+                exec_cli(self.public_IP, self.creation, "ubuntu", keyFile=key)
+                self.phase = "wait4teardown"
+
+    def exec_termination(self, cli_handler, exec=True):
+        if self.phase == "wait4teardown":
+            key = self.raw_yaml["key-name"]
+            exec_cli(self.public_IP, self.termination, "ubuntu", keyFile=key)
+            self.phase = "done"
+        elif self.phase == "wait4setup":
+            key = self.raw_yaml["key-name"]
+            exec_cli(self.public_IP, self.cancellation, "ubuntu", keyFile=key)
+            self.phase = "done"
+        elif self.phase == "done":
+            pass
+
+def exec_cli(ip, cmd_List, user, passwd=None, keyFile=None):
+    import paramiko
+
+    if keyFile and not os.path.exists(keyFile):
+        print_color("[ERROR][EC2INSTANCE][_cmd_handler]: Key file not exist in working dir:" + os.getcwd(),
+                    "red")
+        return False
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    while True:
+        try:
+            ssh.connect(ip, username=user, password=passwd, key_filename=keyFile)
+            break
+        except Exception as e:
+            print_color(f"[ERROR][exec_cli][SSH]:{e}", "red")
+            time.sleep(5)
+
+    for cmd in cmd_List:
+        num = 0
+        while num <= 40:
+            stdin, stdout, stderr = ssh.exec_command(cmd)
+            print_color(f"[Info][exec_cli][{ip}]:{cmd}", "yellow")
+            stdout.channel.recv_exit_status()  # Yijun
+            out_lines = stdout.readlines()
+            stderr.channel.recv_exit_status()  # Yijun
+            out_errors = stderr.readlines()
+            if out_errors:
+                del stdin, stdout, stderr
+                print_color(f"[Error][exec_cli][{ip}]:{cmd} => {out_errors}", "red")
+                if type(out_errors) == type([]):
+                    tmp_cont = "".join(out_errors)
+                    if "you have held broken packages" in tmp_cont:
+                        time.sleep(10)
+                        print(num)
+                        num += 1
+                        continue
+            if out_lines:
+                print_color(f"cmd_output\n:{out_lines}", "green")
+
+            del stdin, stdout, stderr
+            break
 
 if __name__ == "__main__":
     import paramiko

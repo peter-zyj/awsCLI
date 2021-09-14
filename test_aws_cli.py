@@ -2110,7 +2110,7 @@ def test_manual_termination():
     obj = aws(setting, record=False)
     atexit.register(obj.close)
 
-    name = "aws_cli_16-26-54_23-08-2021"
+    name = "aws_cli_14-29-13_19-04-2021-ohio-test"
     obj.manual_termination(name)
 
     obj.close()
@@ -2276,6 +2276,36 @@ PytestExtra_NWInterface_FTD_3_Bind(BIND):
     cleanUP: True
 '''
     obj = aws(record=False, debug=True)
+    atexit.register(obj.close)
+
+    obj.load_deployment(content=cont)
+    obj.start_deployment()
+
+@pytest.mark.followup
+def test_followup_ec2():
+    cont = '''
+Boot-Up-data-interface-ASA-JB(FollowUP):
+  type: EC2INSTANCE
+  network-interface-id: Geneve-72_NWInterface_ASA_JB
+  instance-id: Geneve-72-EC2-ASA-JB
+  key-name: testMonkey
+  action:
+    bind_to:
+      - Geneve-72_NWInterface_ASA_JB
+      - Geneve-72-EC2-ASA-JB
+    cmd:
+      setup:
+        - sudo ifconfig eth1 down
+        - sudo ifconfig eth1 {Geneve-72_NWInterface_ASA_JB}/24
+        - sudo ifconfig eth1 up
+      cancel:
+        - hostname
+      teardown:
+        - sudo ifconfig eth1 down  
+'''
+
+    from awsAPIv4 import aws
+    obj = aws(record=False, debug=False)
     atexit.register(obj.close)
 
     obj.load_deployment(content=cont)

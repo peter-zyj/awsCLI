@@ -303,6 +303,48 @@ def Basic_miss_config():
     assert "100% packet loss" in resp1
     ssh.close()
 
+
+# @pytest.fixture(scope="module", params=["mod1", "mod2"])
+# def sss():
+#     print("~~~~~sss~~~~~")
+#
+# @pytest.mark.shit
+# def test_shit(sss):
+#     print("\nshit")
+#
+# @pytest.mark.shit
+# def test_shit2():
+#     print("shit2")
+
+
+@pytest.mark.clusterConfig
+def test_cluster_config(local_asa):
+    asa_dict = local_asa
+    print(asa_dict)
+
+    key = "testCat.pem"
+    asa_jb_ip = "30.0.250.20"
+    job_list = []
+    from multiprocessing import Process
+    timer_start = time.time()
+    for name, ip in asa_dict.items():
+        asa_address = f"ssh -i '{key}' admin@{ip}"
+        name = name.replace("#", "-")
+
+        timer_p = Process(target=load_asa_config_multi, args=(asa_address, name, asa_jb_ip))
+        timer_p.start()
+        job_list.append(timer_p)
+
+    for job in job_list:
+        job.join()
+        job.close()
+
+    end = time.time() - timer_start
+    print("Info: time cost == ", end)
+#Load config
+#TBD
+
+>>>>>>> Stashed changes
 @pytest.mark.geneveASA
 @pytest.mark.basic1to2
 def test_Basic_PingGoogle(local_run):
