@@ -12,6 +12,7 @@ from lib_yijun import print_color
 #version 3.2: config syntax check
 #version 3.3: record_cli add runman notes
 #version 4: support res-counter by update find_id()
+#version 4.1 update blind by adding verbose
 
 class aws(object):
     def __init__(self, configuration=None, record=True, debug=False):
