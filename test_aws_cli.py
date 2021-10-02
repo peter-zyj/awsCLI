@@ -2298,7 +2298,7 @@ Boot-Up-data-interface-ASA-JB(FollowUp):
       cancel:
         - hostname
       teardown:
-        - sudo ifconfig eth1 down
+        - ifconfig
     query_from:
       - Geneve-72_NWInterface_ASA_JB
       - Geneve-72-EC2-ASA-JB
@@ -2313,12 +2313,15 @@ Boot-Up-data-interface-ASA-JB(FollowUp):
 
 @pytest.mark.demoShow
 def test_demoShow():
+    from awsAPIv4 import aws
     obj = aws(record="demoShow.log", debug=False)
     atexit.register(obj.close)
 
     obj.load_deployment("aws_tb_pytest_west_2_ASA_vxlan.config")
     obj.start_deployment()
     print("~~~~~~~~~All Set~~~~~~~~~~")
+    time.sleep(3600)
+
 @pytest.mark.runman
 def test_runman():
     import awsRunman
