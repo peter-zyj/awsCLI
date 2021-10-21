@@ -8,7 +8,7 @@ import pytest
 from awsAPIv3 import aws
 from lib_yijun import *
 
-
+#pytest -v -s -m geneveASA  --skip_updown --html=report.html --self-contained-html --metadata Version 9.17.0.20
 def load_asa_config(asa_address, asa_jb_ip="20.0.250.10", debug=False):
     import pexpect
 

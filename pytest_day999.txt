@@ -126,3 +126,5 @@ network-object host 20.0.1.10
 
 object service http80
 service tcp destination eq www
+
+nat (data-interface,data-interface) source static gwlb interface destination static interface metadata service http80 http80
