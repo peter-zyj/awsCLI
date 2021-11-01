@@ -2069,7 +2069,7 @@ def test_fmc_reg(local_run):
 # def test_fmc_reg():
     from selenium import webdriver
     from selenium.webdriver.common.by import By
-
+    #need to manually ssh login FMCv first, which help to setup admin/Cisco123!@#  (default one:Cisco@13)
     timer = 5
     app_jb_ip, asa_jb_ip, asa_ip, app_ip, ftd_ip, fmc_ip = local_run
     # fmc_ip = "52.53.155.170"

@@ -2110,7 +2110,7 @@ def test_manual_termination():
     obj = aws(setting, record=False)
     atexit.register(obj.close)
 
-    name = "aws_cli_14-29-13_19-04-2021-ohio-test"
+    name = "demoShow.log"
     obj.manual_termination(name)
 
     obj.close()
@@ -2317,10 +2317,10 @@ def test_demoShow():
     obj = aws(record="demoShow.log", debug=False)
     atexit.register(obj.close)
 
-    obj.load_deployment("aws_tb_pytest_west_2_ASA_vxlan.config")
+    obj.load_deployment("aws_tb_pytest_east_1_hybrid_HungEric.config")
     obj.start_deployment()
     print("~~~~~~~~~All Set~~~~~~~~~~")
-    time.sleep(3600)
+
 
 @pytest.mark.runman
 def test_runman():
